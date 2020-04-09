@@ -296,14 +296,14 @@ namespace Dune
      * That means that in each apply call forward and backward
      * substitutions take place (and no decomposition).
      * @param mat The matrix of the system to solve.
-     * @param verbose If true some statistics are printed.
+     * @param verbosity If > 0 some statistics are printed.
      * @param reusevector Default value is true. If true the two vectors are allocate in
      * the first call to apply. These get resused in subsequent calls to apply
      * and are deallocated in the destructor. If false these vectors are allocated
      * at the beginning and deallocated at the end of each apply method. This allows
      * using the same instance of superlu from different threads.
      */
-    explicit SuperLU(const Matrix& mat, bool verbose=false,
+    explicit SuperLU(const Matrix& mat, int verbosity=0,
                      bool reusevector=true);
 
 
@@ -360,7 +360,7 @@ namespace Dune
     template<class S>
     void setSubMatrix(const Matrix& mat, const S& rowIndexSet);
 
-    void setVerbosity(bool v);
+    void setVerbosity(int v);
 
     /**
      * @brief free allocated space.
@@ -388,7 +388,9 @@ namespace Dune
     char equed;
     void *work;
     int lwork;
-    bool first, verbose, reusevector;
+    bool first;
+    int verbosity;
+    bool reusevector;
   };
 
   template<typename M>
@@ -421,8 +423,8 @@ namespace Dune
 
   template<typename M>
   SuperLU<M>
-  ::SuperLU(const Matrix& mat_, bool verbose_, bool reusevector_)
-    : work(0), lwork(0), first(true), verbose(verbose_),
+  ::SuperLU(const Matrix& mat_, int verbosity_, bool reusevector_)
+    : work(0), lwork(0), first(true), verbosity(verbosity_),
       reusevector(reusevector_)
   {
     setMatrix(mat_);
@@ -430,13 +432,13 @@ namespace Dune
   }
   template<typename M>
   SuperLU<M>::SuperLU()
-    :    work(0), lwork(0),verbose(false),
+    :    work(0), lwork(0),verbosity(0),
       reusevector(false)
   {}
   template<typename M>
-  void SuperLU<M>::setVerbosity(bool v)
+  void SuperLU<M>::setVerbosity(int v)
   {
-    verbose=v;
+    verbosity=v;
   }
 
   template<typename M>
@@ -503,7 +505,7 @@ namespace Dune
                                   &L, &U, work, lwork, &B, &X, &rpg, &rcond, &ferr,
                                   &berr, &memusage, &stat, &info);
 
-    if(verbose) {
+    if(verbosity>0) {
       dinfo<<"LU factorization: dgssvx() returns info "<< info<<std::endl;
 
       auto nSuperLUCol = static_cast<SuperMatrix&>(mat).ncol;
@@ -621,7 +623,7 @@ namespace Dune
      */
     res.converged=true;
 
-    if(verbose) {
+    if(verbosity>0) {
 
       dinfo<<"Triangular solve: dgssvx() returns info "<< info<<std::endl;
 
@@ -686,7 +688,7 @@ namespace Dune
                                   &L, &U, work, lwork, mB, mX, &rpg, &rcond, &ferr, &berr,
                                   &memusage, &stat, &info);
 
-    if(verbose) {
+    if(verbosity>0) {
       dinfo<<"Triangular solve: dgssvx() returns info "<< info<<std::endl;
 
       auto nSuperLUCol = static_cast<SuperMatrix&>(mat).ncol;
@@ -734,8 +736,8 @@ namespace Dune
     operator() (TL /*tl*/, const M& mat, const Dune::ParameterTree& config,
                 std::enable_if_t<isValidBlock<typename Dune::TypeListElement<1, TL>::type::block_type>::value,int> = 0) const
     {
-      int verbose = config.get("verbose", 0);
-      return std::make_shared<Dune::SuperLU<M>>(mat,verbose);
+      int verbosity = config.get("verbosity", 0);
+      return std::make_shared<Dune::SuperLU<M>>(mat,verbosity);
     }
 
     // second version with SFINAE to validate the template parameters of SuperLU

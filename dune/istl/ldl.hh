@@ -99,9 +99,9 @@ namespace Dune {
      * (and use a lot of memory).
      *
      * @param matrix the matrix to solve for
-     * @param verbose 0 or 1 set the verbosity level, defaults to 0
+     * @param verbosity 0 or 1 set the verbosity level, defaults to 0
      */
-    LDL(const Matrix& matrix, int verbose=0) : matrixIsLoaded_(false), verbose_(verbose)
+    LDL(const Matrix& matrix, int verbosity=0) : matrixIsLoaded_(false), verbosity_(verbosity)
     {
       //check whether T is a supported type
       static_assert(std::is_same<T,double>::value,"Unsupported Type in LDL (only double supported)");
@@ -115,9 +115,9 @@ namespace Dune {
      * (and use a lot of memory).
      *
      * @param matrix the matrix to solve for
-     * @param verbose 0 or 1 set the verbosity level, defaults to 0
+     * @param verbosity 0 or 1 set the verbosity level, defaults to 0
      */
-    LDL(const Matrix& matrix, int verbose, bool) : matrixIsLoaded_(false), verbose_(verbose)
+    LDL(const Matrix& matrix, int verbosity, bool) : matrixIsLoaded_(false), verbosity_(verbosity)
     {
       //check whether T is a supported type
       static_assert(std::is_same<T,double>::value,"Unsupported Type in LDL (only double supported)");
@@ -138,7 +138,7 @@ namespace Dune {
     {}
 
     /** @brief Default constructor. */
-    LDL() : matrixIsLoaded_(false), verbose_(0)
+    LDL() : matrixIsLoaded_(false), verbosity_(0)
     {}
 
     /** @brief Default constructor. */
@@ -227,7 +227,7 @@ namespace Dune {
      */
     inline void setVerbosity(int v)
     {
-      verbose_=v;
+      verbosity_=v;
     }
 
     /**
@@ -322,7 +322,7 @@ namespace Dune {
       double Info [AMD_INFO];
       if(amd_order (dimMat, ldlMatrix_.getColStart(), ldlMatrix_.getRowIndex(), P_, (double *) NULL, Info) < AMD_OK)
         DUNE_THROW(InvalidStateException,"Error: AMD failed!");
-      if(verbose_ > 0)
+      if(verbosity_ > 0)
         amd_info (Info);
       // compute the symbolic factorisation
       ldl_symbolic(dimMat, ldlMatrix_.getColStart(), ldlMatrix_.getRowIndex(), Lp_, Parent_, Lnz_, Flag_, P_, Pinv_);
@@ -344,7 +344,7 @@ namespace Dune {
 
     LDLMatrix ldlMatrix_;
     bool matrixIsLoaded_;
-    int verbose_;
+    int verbosity_;
     int* Lp_;
     int* Parent_;
     int* Lnz_;
@@ -381,8 +381,8 @@ namespace Dune {
       std::enable_if_t<
                 isValidBlock<typename Dune::TypeListElement<1, TL>::type::block_type>::value,int> = 0) const
     {
-      int verbose = config.get("verbose", 0);
-      return std::make_shared<Dune::LDL<M>>(mat,verbose);
+      int verbosity = config.get("verbosity", 0);
+      return std::make_shared<Dune::LDL<M>>(mat,verbosity);
     }
 
     // second version with SFINAE to validate the template parameters of LDL

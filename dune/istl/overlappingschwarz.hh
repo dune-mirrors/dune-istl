@@ -1168,7 +1168,7 @@ namespace Dune
           ++initializer, ++solver, ++domain) {
         solver->getInternalMatrix().N_=SeqOverlappingSchwarzDomainSize<matrix_type>::size(*domain);
         solver->getInternalMatrix().M_=SeqOverlappingSchwarzDomainSize<matrix_type>::size(*domain);
-        //solver->setVerbosity(true);
+        //solver->setVerbosity(1);
         *initializer=MatrixInitializer(solver->getInternalMatrix());
       }
 

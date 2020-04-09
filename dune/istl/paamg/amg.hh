@@ -154,7 +154,7 @@ namespace Dune
          gamma                     | 1 for V-cycle, 2 for W-cycle.
          preSteps                  | Number of presmoothing steps.
          postSteps                 | Number of postsmoothing steps.
-         verbosity                 | Output verbosity. default=2.
+         verbosity                 | Output verbosity. default=0.
          criterionSymmetric        | If true use SymmetricCriterion (default), else UnSymmetricCriterion
          strengthMeasure           | What conversion to use to convert a matrix block
                                    | to a scalar when determining strength of connection:
@@ -641,7 +641,7 @@ namespace Dune
       struct Solver
       {
         typedef InverseOperator<Vector,Vector> type;
-        static type* create(const M& mat, bool verbose, bool reusevector )
+        static type* create(const M& mat, int verbosity, bool reusevector )
         {
           DUNE_THROW(NotImplemented,"DirectSolver not selected");
           return nullptr;
@@ -653,9 +653,9 @@ namespace Dune
       struct Solver< M, umfpack >
       {
         typedef UMFPack< M > type;
-        static type* create(const M& mat, bool verbose, bool reusevector )
+        static type* create(const M& mat, int verbosity, bool reusevector )
         {
-          return new type(mat, verbose, reusevector );
+          return new type(mat, verbosity, reusevector );
         }
         static std::string name () { return "UMFPack"; }
       };
@@ -665,9 +665,9 @@ namespace Dune
       struct Solver< M, superlu >
       {
         typedef SuperLU< M > type;
-        static type* create(const M& mat, bool verbose, bool reusevector )
+        static type* create(const M& mat, int verbosity, bool reusevector )
         {
-          return new type(mat, verbose, reusevector );
+          return new type(mat, verbosity, reusevector );
         }
         static std::string name () { return "SuperLU"; }
       };
@@ -678,9 +678,9 @@ namespace Dune
       typedef typename SelectedSolver :: type   DirectSolver;
       static constexpr bool isDirectSolver = solver != none;
       static std::string name() { return SelectedSolver :: name (); }
-      static DirectSolver* create(const Matrix& mat, bool verbose, bool reusevector )
+      static DirectSolver* create(const Matrix& mat, int verbosity, bool reusevector )
       {
-        return SelectedSolver :: create( mat, verbose, reusevector );
+        return SelectedSolver :: create( mat, verbosity, reusevector );
       }
     };
 

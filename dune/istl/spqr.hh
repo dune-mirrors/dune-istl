@@ -90,9 +90,9 @@ namespace Dune {
      * (and use a lot of memory).
      *
      *  @param matrix the matrix to solve for
-     *  @param verbose 0 or 1, set the verbosity level, defaults to 0
+     *  @param verbosity 0 or 1, set the verbosity level, defaults to 0
      */
-    SPQR(const Matrix& matrix, int verbose=0) : matrixIsLoaded_(false), verbose_(verbose)
+    SPQR(const Matrix& matrix, int verbosity=0) : matrixIsLoaded_(false), verbosity_(verbosity)
     {
       //check whether T is a supported type
       static_assert((std::is_same<T,double>::value) || (std::is_same<T,std::complex<double> >::value),
@@ -108,9 +108,9 @@ namespace Dune {
      * (and use a lot of memory).
      *
      * @param matrix the matrix to solve for
-     * @param verbose 0 or 1, set the verbosity level, defaults to 0
+     * @param verbosity 0 or 1, set the verbosity level, defaults to 0
      */
-    SPQR(const Matrix& matrix, int verbose, bool) : matrixIsLoaded_(false), verbose_(verbose)
+    SPQR(const Matrix& matrix, int verbosity, bool) : matrixIsLoaded_(false), verbosity_(verbosity)
     {
       //check whether T is a supported type
       static_assert((std::is_same<T,double>::value) || (std::is_same<T,std::complex<double> >::value),
@@ -134,7 +134,7 @@ namespace Dune {
     {}
 
     /** @brief Default constructor. */
-    SPQR() : matrixIsLoaded_(false), verbose_(0)
+    SPQR() : matrixIsLoaded_(false), verbosity_(0)
     {
       //check whether T is a supported type
       static_assert((std::is_same<T,double>::value) || (std::is_same<T,std::complex<double> >::value),
@@ -175,7 +175,7 @@ namespace Dune {
       // this is a direct solver
       res.iterations = 1;
       res.converged = true;
-      if(verbose_ > 0)
+      if(verbosity_ > 0)
       {
         std::cout<<std::endl<<"Solving with SuiteSparseQR"<<std::endl;
         std::cout<<"Flops Taken: "<<cc_->SPQR_flopcount<<std::endl;
@@ -237,7 +237,7 @@ namespace Dune {
      */
     inline void setVerbosity(int v)
     {
-      verbose_=v;
+      verbosity_=v;
     }
 
     /**
@@ -311,7 +311,7 @@ namespace Dune {
 
     SPQRMatrix spqrMatrix_;
     bool matrixIsLoaded_;
-    int verbose_;
+    int verbosity_;
     cholmod_common* cc_;
     cholmod_sparse* A_;
     cholmod_dense* B_;
@@ -340,8 +340,8 @@ namespace Dune {
       std::enable_if_t<
                 isValidBlock<typename Dune::TypeListElement<1, TL>::type::block_type>::value,int> = 0) const
     {
-      int verbose = config.get("verbose", 0);
-      return std::make_shared<Dune::SPQR<M>>(mat,verbose);
+      int verbosity = config.get("verbosity", 0);
+      return std::make_shared<Dune::SPQR<M>>(mat,verbosity);
     }
 
     // second version with SFINAE to validate the template parameters of SPQR

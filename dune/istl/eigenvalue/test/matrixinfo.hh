@@ -53,7 +53,7 @@ public:
    *                                    whose properties shall be
    *                                    considered; is assumed to
    *                                    be square.
-   * \param[in] verbose                 Verbosity setting.
+   * \param[in] verbosity               Verbosity setting.
    * \param[in] arppp_a_verbosity_level Verbosity setting of the
    *                                    underlying ARPACK++ algorithms.
    * \param[in] pia_verbosity_level     Verbosity setting of the
@@ -61,13 +61,13 @@ public:
    *                                    based algorithms.
    */
   MatrixInfo (const BCRSMatrix& m,
-              const bool verbose = false,
+              const int verbosity = 0,
               const unsigned int arppp_a_verbosity_level = 0,
               const unsigned int pia_verbosity_level = 0)
     : m_(m),
-      verbose_(verbose),
-      arppp_a_verbosity_level_(arppp_a_verbosity_level*verbose),
-      pia_verbosity_level_(pia_verbosity_level*verbose),
+      verbosity_(verbosity),
+      arppp_a_verbosity_level_(arppp_a_verbosity_level*verbosity),
+      pia_verbosity_level_(pia_verbosity_level*verbosity),
       cond_2_(-1.0), symmetricity_assumed_(false)
   {
     // assert that BCRSMatrix type has blocklevel 2
@@ -93,7 +93,7 @@ public:
   {
     if (cond_2_ == -1.0 || symmetricity_assumed_ != assume_symmetric)
     {
-      if (verbose_)
+      if (verbosity_ > 0)
         std::cout << "    MatrixInfo: Computing 2-norm condition number"
                   << (assume_symmetric ? " (assuming that matrix is symmetric)." : ".")
                   << std::endl;
@@ -216,12 +216,12 @@ protected:
                  << "infinity norm of the matrix!");
 
     // 9) output largest magnitude eigenvalue
-    if (verbose_)
+    if (verbosity_ > 0)
       std::cout << "    Largest magnitude eigenvalue λ_max = "
                 << lambda_max << std::endl;
 
     // 10) output smallest magnitude eigenvalue
-    if (verbose_)
+    if (verbosity_ > 0)
       std::cout << "    Smallest magnitude eigenvalue λ_min = "
                 << lambda_min << std::endl;
 
@@ -230,7 +230,7 @@ protected:
     cond_2 = std::abs(lambda_max / lambda_min);
 
     // 12) output spectral (i.e. 2-norm) condition number
-    if (verbose_)
+    if (verbosity_ > 0)
       std::cout << "    2-norm condition number cond_2 = "
                 << cond_2 << std::endl;
 
@@ -349,12 +349,12 @@ protected:
                  << "infinity norm of the matrix!");
 
     // 11) output largest singular value
-    if (verbose_)
+    if (verbosity_ > 0)
       std::cout << "    Largest singular value σ_max = "
                 << sigma_max << std::endl;
 
     // 12) output smallest singular value
-    if (verbose_)
+    if (verbosity_ > 0)
       std::cout << "    Smallest singular value σ_min = "
                 << sigma_min << std::endl;
 
@@ -362,7 +362,7 @@ protected:
     cond_2 = sigma_max / sigma_min;
 
     // 14) output spectral (i.e. 2-norm) condition number
-    if (verbose_)
+    if (verbosity_ > 0)
       std::cout << "    2-norm condition number cond_2 = "
                 << cond_2 << std::endl;
 
@@ -375,7 +375,7 @@ protected:
   const BCRSMatrix& m_;
 
   // verbosity setting
-  const bool verbose_;
+  const int verbosity_;
   const unsigned int arppp_a_verbosity_level_;
   const unsigned int pia_verbosity_level_;
 

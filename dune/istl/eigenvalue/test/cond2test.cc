@@ -33,11 +33,11 @@ int main (int argc, char** argv)
 
     Dune::Timer watch;
 
-    const bool verbose = true;
+    const int verbosity = 1;
     const unsigned int arppp_a_verbosity_level = 2;
     const unsigned int pia_verbosity_level = 1;
     MatrixInfo<BCRSMat> matrixInfo
-      (mat,verbose,arppp_a_verbosity_level,pia_verbosity_level);
+      (mat,verbosity,arppp_a_verbosity_level,pia_verbosity_level);
 
     watch.reset();
     matrixInfo.getCond2(true);

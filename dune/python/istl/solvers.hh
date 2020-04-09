@@ -94,9 +94,9 @@ namespace Dune
         pybind11::options opts;
         opts.disable_function_signatures();
 
-        module.def( "LoopSolver", [] ( LinearOperator< X, X > &op, Preconditioner< X, X > &prec, double reduction, int maxit, int verbose ) {
-            return static_cast< Solver * >( new Dune::LoopSolver< X >( op, prec, reduction, maxit, verbose ) );
-          }, "operator"_a, "preconditioner"_a, "reduction"_a, "maxIterations"_a = std::numeric_limits< int >::max(), "verbose"_a = 0, pybind11::keep_alive< 0, 1 >(), pybind11::keep_alive< 0, 2 >(),
+        module.def( "LoopSolver", [] ( LinearOperator< X, X > &op, Preconditioner< X, X > &prec, double reduction, int maxit, int verbosity ) {
+            return static_cast< Solver * >( new Dune::LoopSolver< X >( op, prec, reduction, maxit, verbosity ) );
+          }, "operator"_a, "preconditioner"_a, "reduction"_a, "maxIterations"_a = std::numeric_limits< int >::max(), "verbosity"_a = 0, pybind11::keep_alive< 0, 1 >(), pybind11::keep_alive< 0, 2 >(),
           R"doc(
             Loop solver
 
@@ -105,7 +105,7 @@ namespace Dune
                 preconditioner:  preconditioner to use (i.e., apprixmate inverse of the operator)
                 reduction:       factor to reduce the defect by
                 maxIterations:   maximum number of iterations to perform
-                verbose:         verbosity level (0 = quiet, 1 = summary, 2 = verbose)
+                verbosity:       verbosity level (0 = quiet, 1 = summary, 2 = verbose)
 
             Returns:
                 ISTL Loop solver
@@ -114,9 +114,9 @@ namespace Dune
                 The loop solver will apply the preconditioner once in each step.
           )doc" );
 
-        module.def( "GradientSolver", [] ( LinearOperator< X, X > &op, Preconditioner< X, X > &prec, double reduction, int maxit, int verbose ) {
-            return static_cast< Solver * >( new Dune::GradientSolver< X >( op, prec, reduction, maxit, verbose ) );
-          }, "operator"_a, "preconditioner"_a, "reduction"_a, "maxIterations"_a = std::numeric_limits< int >::max(), "verbose"_a = 0, pybind11::keep_alive< 0, 1 >(), pybind11::keep_alive< 0, 2 >(),
+        module.def( "GradientSolver", [] ( LinearOperator< X, X > &op, Preconditioner< X, X > &prec, double reduction, int maxit, int verbosity ) {
+            return static_cast< Solver * >( new Dune::GradientSolver< X >( op, prec, reduction, maxit, verbosity ) );
+          }, "operator"_a, "preconditioner"_a, "reduction"_a, "maxIterations"_a = std::numeric_limits< int >::max(), "verbosity"_a = 0, pybind11::keep_alive< 0, 1 >(), pybind11::keep_alive< 0, 2 >(),
           R"doc(
             Gradient iterative solver
 
@@ -125,7 +125,7 @@ namespace Dune
                 preconditioner:  preconditioner to use (i.e., apprixmate inverse of the operator)
                 reduction:       factor to reduce the defect by
                 maxIterations:   maximum number of iterations to perform
-                verbose:         verbosity level (0 = quiet, 1 = summary, 2 = verbose)
+                verbosity:       verbosity level (0 = quiet, 1 = summary, 2 = verbose)
 
             Returns:
                 ISTL Gradient solver
@@ -134,9 +134,9 @@ namespace Dune
                 This method is also know as steepest descend method.
           )doc" );
 
-        module.def( "CGSolver", [] ( LinearOperator< X, X > &op, Preconditioner< X, X > &prec, double reduction, int maxit, int verbose ) {
-            return static_cast< Solver * >( new Dune::CGSolver< X >( op, prec, reduction, maxit, verbose ) );
-          }, "operator"_a, "preconditioner"_a, "reduction"_a, "maxIterations"_a = std::numeric_limits< int >::max(), "verbose"_a = 0, pybind11::keep_alive< 0, 1 >(), pybind11::keep_alive< 0, 2 >(),
+        module.def( "CGSolver", [] ( LinearOperator< X, X > &op, Preconditioner< X, X > &prec, double reduction, int maxit, int verbosity ) {
+            return static_cast< Solver * >( new Dune::CGSolver< X >( op, prec, reduction, maxit, verbosity ) );
+          }, "operator"_a, "preconditioner"_a, "reduction"_a, "maxIterations"_a = std::numeric_limits< int >::max(), "verbosity"_a = 0, pybind11::keep_alive< 0, 1 >(), pybind11::keep_alive< 0, 2 >(),
           R"doc(
             Conjugate gradient iterative solver
 
@@ -145,7 +145,7 @@ namespace Dune
                 preconditioner:  preconditioner to use (i.e., apprixmate inverse of the operator)
                 reduction:       factor to reduce the defect by
                 maxIterations:   maximum number of iterations to perform
-                verbose:         verbosity level (0 = quiet, 1 = summary, 2 = verbose)
+                verbosity:       verbosity level (0 = quiet, 1 = summary, 2 = verbose)
 
             Returns:
                 ISTL Conjugate gradient solver
@@ -154,9 +154,9 @@ namespace Dune
                 The conjucate gradient method can only be applied if the operator and the preconditioner are both symmetric and positive definite.
           )doc" );
 
-        module.def( "BiCGSTABSolver", [] ( LinearOperator< X, X > &op, Preconditioner< X, X > &prec, double reduction, int maxit, int verbose ) {
-            return static_cast< Solver * >( new Dune::CGSolver< X >( op, prec, reduction, maxit, verbose ) );
-          }, "operator"_a, "preconditioner"_a, "reduction"_a, "maxIterations"_a = std::numeric_limits< int >::max(), "verbose"_a = 0, pybind11::keep_alive< 0, 1 >(), pybind11::keep_alive< 0, 2 >(),
+        module.def( "BiCGSTABSolver", [] ( LinearOperator< X, X > &op, Preconditioner< X, X > &prec, double reduction, int maxit, int verbosity ) {
+            return static_cast< Solver * >( new Dune::CGSolver< X >( op, prec, reduction, maxit, verbosity ) );
+          }, "operator"_a, "preconditioner"_a, "reduction"_a, "maxIterations"_a = std::numeric_limits< int >::max(), "verbosity"_a = 0, pybind11::keep_alive< 0, 1 >(), pybind11::keep_alive< 0, 2 >(),
           R"doc(
             Biconjugate gradient stabilized iterative solver
 
@@ -165,15 +165,15 @@ namespace Dune
                 preconditioner:  preconditioner to use (i.e., apprixmate inverse of the operator)
                 reduction:       factor to reduce the defect by
                 maxIterations:   maximum number of iterations to perform
-                verbose:         verbosity level (0 = quiet, 1 = summary, 2 = verbose)
+                verbosity:       verbosity level (0 = quiet, 1 = summary, 2 = verbose)
 
             Returns:
                 ISTL Biconjugate gradient stabilized solver
           )doc" );
 
-        module.def( "MinResSolver", [] ( LinearOperator< X, X > &op, Preconditioner< X, X > &prec, double reduction, int maxit, int verbose ) {
-            return static_cast< Solver * >( new Dune::CGSolver< X >( op, prec, reduction, maxit, verbose ) );
-          }, "operator"_a, "preconditioner"_a, "reduction"_a, "maxIterations"_a = std::numeric_limits< int >::max(), "verbose"_a = 0, pybind11::keep_alive< 0, 1 >(), pybind11::keep_alive< 0, 2 >(),
+        module.def( "MinResSolver", [] ( LinearOperator< X, X > &op, Preconditioner< X, X > &prec, double reduction, int maxit, int verbosity ) {
+            return static_cast< Solver * >( new Dune::CGSolver< X >( op, prec, reduction, maxit, verbosity ) );
+          }, "operator"_a, "preconditioner"_a, "reduction"_a, "maxIterations"_a = std::numeric_limits< int >::max(), "verbosity"_a = 0, pybind11::keep_alive< 0, 1 >(), pybind11::keep_alive< 0, 2 >(),
           R"doc(
             Minimal residual iterative solver
 
@@ -182,7 +182,7 @@ namespace Dune
                 preconditioner:  preconditioner to use (i.e., apprixmate inverse of the operator)
                 reduction:       factor to reduce the defect by
                 maxIterations:   maximum number of iterations to perform
-                verbose:         verbosity level (0 = quiet, 1 = summary, 2 = verbose)
+                verbosity:       verbosity level (0 = quiet, 1 = summary, 2 = verbose)
 
             Returns:
                 ISTL Minimal residual solver
@@ -225,9 +225,9 @@ namespace Dune
 
       detail::registerEndomorphismSolvers( module, cls );
 
-      module.def( "RestartedGMResSolver", [] ( LinearOperator< X, Y > &op, Preconditioner< X, Y > &prec, double reduction, int restart, int maxit, int verbose ) {
-          return static_cast< Solver * >( new Dune::RestartedGMResSolver< X, Y >( op, prec, reduction, restart, maxit, verbose ) );
-        }, "operator"_a, "preconditioner"_a, "reduction"_a, "restart"_a, "maxIterations"_a = std::numeric_limits< int >::max(), "verbose"_a = 0, pybind11::keep_alive< 0, 1 >(), pybind11::keep_alive< 0, 2 >(),
+      module.def( "RestartedGMResSolver", [] ( LinearOperator< X, Y > &op, Preconditioner< X, Y > &prec, double reduction, int restart, int maxit, int verbosity ) {
+          return static_cast< Solver * >( new Dune::RestartedGMResSolver< X, Y >( op, prec, reduction, restart, maxit, verbosity ) );
+        }, "operator"_a, "preconditioner"_a, "reduction"_a, "restart"_a, "maxIterations"_a = std::numeric_limits< int >::max(), "verbosity"_a = 0, pybind11::keep_alive< 0, 1 >(), pybind11::keep_alive< 0, 2 >(),
           R"doc(
             Restarted generalized minimal residual iterative solver
 
@@ -237,7 +237,7 @@ namespace Dune
                 reduction:       factor to reduce the defect by
                 restart:         number of iterations before restart
                 maxIterations:   maximum number of iterations to perform
-                verbose:         verbosity level (0 = quiet, 1 = summary, 2 = verbose)
+                verbosity:       verbosity level (0 = quiet, 1 = summary, 2 = verbose)
 
             Returns:
                 ISTL Restarted generalized minimal residual solver

@@ -112,7 +112,7 @@ namespace Dune {
     using IterativeSolver<X,X>::_sp;
     using IterativeSolver<X,X>::_reduction;
     using IterativeSolver<X,X>::_maxit;
-    using IterativeSolver<X,X>::_verbose;
+    using IterativeSolver<X,X>::_verbosity;
     using Iteration = typename IterativeSolver<X,X>::template Iteration<unsigned int>;
   };
   DUNE_REGISTER_ITERATIVE_SOLVER("loopsolver", defaultIterativeSolverCreator<Dune::LoopSolver>());
@@ -183,7 +183,7 @@ namespace Dune {
     using IterativeSolver<X,X>::_sp;
     using IterativeSolver<X,X>::_reduction;
     using IterativeSolver<X,X>::_maxit;
-    using IterativeSolver<X,X>::_verbose;
+    using IterativeSolver<X,X>::_verbosity;
     using Iteration = typename IterativeSolver<X,X>::template Iteration<unsigned int>;
   };
   DUNE_REGISTER_ITERATIVE_SOLVER("gradientsolver", defaultIterativeSolverCreator<Dune::GradientSolver>());
@@ -220,7 +220,7 @@ namespace Dune {
                                 This is only supported for float and double field types.
     */
     CGSolver (const LinearOperator<X,X>& op, Preconditioner<X,X>& prec,
-      scalar_real_type reduction, int maxit, int verbose, bool condition_estimate) : IterativeSolver<X,X>(op, prec, reduction, maxit, verbose),
+      scalar_real_type reduction, int maxit, int verbosity, bool condition_estimate) : IterativeSolver<X,X>(op, prec, reduction, maxit, verbosity),
       condition_estimate_(condition_estimate)
     {
       if (condition_estimate && !enableConditionEstimate) {
@@ -237,7 +237,7 @@ namespace Dune {
                                 This is only supported for float and double field types.
     */
     CGSolver (const LinearOperator<X,X>& op, const ScalarProduct<X>& sp, Preconditioner<X,X>& prec,
-      scalar_real_type reduction, int maxit, int verbose, bool condition_estimate) : IterativeSolver<X,X>(op, sp, prec, reduction, maxit, verbose),
+      scalar_real_type reduction, int maxit, int verbosity, bool condition_estimate) : IterativeSolver<X,X>(op, sp, prec, reduction, maxit, verbosity),
       condition_estimate_(condition_estimate)
     {
       if (condition_estimate && !(std::is_same<field_type,float>::value || std::is_same<field_type,double>::value)) {
@@ -255,8 +255,8 @@ namespace Dune {
     */
     CGSolver (std::shared_ptr<const LinearOperator<X,X>> op, std::shared_ptr<ScalarProduct<X>> sp,
               std::shared_ptr<Preconditioner<X,X>> prec,
-              scalar_real_type reduction, int maxit, int verbose, bool condition_estimate)
-      : IterativeSolver<X,X>(op, sp, prec, reduction, maxit, verbose),
+              scalar_real_type reduction, int maxit, int verbosity, bool condition_estimate)
+      : IterativeSolver<X,X>(op, sp, prec, reduction, maxit, verbosity),
       condition_estimate_(condition_estimate)
     {
       if (condition_estimate && !(std::is_same<field_type,float>::value || std::is_same<field_type,double>::value)) {
@@ -382,7 +382,7 @@ namespace Dune {
 
           res.condition_estimate = max_eigv / min_eigv;
 
-          if (this->_verbose > 0) {
+          if (this->_verbosity > 0) {
             std::cout << "Min eigv estimate: " << Simd::io(min_eigv) << '\n';
             std::cout << "Max eigv estimate: " << Simd::io(max_eigv) << '\n';
             std::cout << "Condition estimate: "
@@ -408,7 +408,7 @@ namespace Dune {
     using IterativeSolver<X,X>::_sp;
     using IterativeSolver<X,X>::_reduction;
     using IterativeSolver<X,X>::_maxit;
-    using IterativeSolver<X,X>::_verbose;
+    using IterativeSolver<X,X>::_verbosity;
     using Iteration = typename IterativeSolver<X,X>::template Iteration<unsigned int>;
   };
   DUNE_REGISTER_ITERATIVE_SOLVER("cgsolver", defaultIterativeSolverCreator<Dune::CGSolver>());
@@ -593,7 +593,7 @@ namespace Dune {
     using IterativeSolver<X,X>::_sp;
     using IterativeSolver<X,X>::_reduction;
     using IterativeSolver<X,X>::_maxit;
-    using IterativeSolver<X,X>::_verbose;
+    using IterativeSolver<X,X>::_verbosity;
     template<class CountType>
     using Iteration = typename IterativeSolver<X,X>::template Iteration<CountType>;
   };
@@ -804,7 +804,7 @@ namespace Dune {
     using IterativeSolver<X,X>::_sp;
     using IterativeSolver<X,X>::_reduction;
     using IterativeSolver<X,X>::_maxit;
-    using IterativeSolver<X,X>::_verbose;
+    using IterativeSolver<X,X>::_verbosity;
     using Iteration = typename IterativeSolver<X,X>::template Iteration<unsigned int>;
   };
   DUNE_REGISTER_ITERATIVE_SOLVER("minressolver", defaultIterativeSolverCreator<Dune::MINRESSolver>());
@@ -847,8 +847,8 @@ namespace Dune {
        \copydoc LoopSolver::LoopSolver(const L&,P&,double,int,int)
        \param restart number of GMRes cycles before restart
      */
-    RestartedGMResSolver (const LinearOperator<X,Y>& op, Preconditioner<X,Y>& prec, scalar_real_type reduction, int restart, int maxit, int verbose) :
-      IterativeSolver<X,Y>::IterativeSolver(op,prec,reduction,maxit,verbose),
+    RestartedGMResSolver (const LinearOperator<X,Y>& op, Preconditioner<X,Y>& prec, scalar_real_type reduction, int restart, int maxit, int verbosity) :
+      IterativeSolver<X,Y>::IterativeSolver(op,prec,reduction,maxit,verbosity),
       _restart(restart)
     {}
 
@@ -858,8 +858,8 @@ namespace Dune {
        \copydoc LoopSolver::LoopSolver(const L&, const S&,P&,double,int,int)
        \param restart number of GMRes cycles before restart
      */
-    RestartedGMResSolver (const LinearOperator<X,Y>& op, const ScalarProduct<X>& sp, Preconditioner<X,Y>& prec, scalar_real_type reduction, int restart, int maxit, int verbose) :
-      IterativeSolver<X,Y>::IterativeSolver(op,sp,prec,reduction,maxit,verbose),
+    RestartedGMResSolver (const LinearOperator<X,Y>& op, const ScalarProduct<X>& sp, Preconditioner<X,Y>& prec, scalar_real_type reduction, int restart, int maxit, int verbosity) :
+      IterativeSolver<X,Y>::IterativeSolver(op,sp,prec,reduction,maxit,verbosity),
       _restart(restart)
     {}
 
@@ -894,8 +894,8 @@ namespace Dune {
     RestartedGMResSolver (std::shared_ptr<const LinearOperator<X,Y>> op,
                           std::shared_ptr<const ScalarProduct<X>> sp,
                           std::shared_ptr<Preconditioner<X,Y>> prec,
-                          scalar_real_type reduction, int restart, int maxit, int verbose) :
-      IterativeSolver<X,Y>::IterativeSolver(op,sp,prec,reduction,maxit,verbose),
+                          scalar_real_type reduction, int restart, int maxit, int verbosity) :
+      IterativeSolver<X,Y>::IterativeSolver(op,sp,prec,reduction,maxit,verbosity),
       _restart(restart)
     {}
 
@@ -1016,7 +1016,7 @@ namespace Dune {
         // and if j < _maxit (do not restart on last iteration)
         if( res.converged != true && j < _maxit ) {
 
-          if(_verbose > 0)
+          if(_verbosity > 0)
             std::cout << "=== GMRes::restart" << std::endl;
           // get saved rhs
           b = b2;
@@ -1115,7 +1115,7 @@ namespace Dune {
     using IterativeSolver<X,Y>::_sp;
     using IterativeSolver<X,Y>::_reduction;
     using IterativeSolver<X,Y>::_maxit;
-    using IterativeSolver<X,Y>::_verbose;
+    using IterativeSolver<X,Y>::_verbosity;
     using Iteration = typename IterativeSolver<X,X>::template Iteration<unsigned int>;
     int _restart;
   };
@@ -1261,7 +1261,7 @@ namespace Dune {
         // and if still j < _maxit (do not restart on last iteration)
         if( res.converged != true && j < _maxit)
         {
-          if (_verbose > 0)
+          if (_verbosity > 0)
             std::cout << "=== fGMRes::restart" << std::endl;
           // get rhs
           v[0] = b;
@@ -1283,7 +1283,7 @@ private:
     using RestartedGMResSolver<X,Y>::_sp;
     using RestartedGMResSolver<X,Y>::_reduction;
     using RestartedGMResSolver<X,Y>::_maxit;
-    using RestartedGMResSolver<X,Y>::_verbose;
+    using RestartedGMResSolver<X,Y>::_verbosity;
     using RestartedGMResSolver<X,Y>::_restart;
     using Iteration = typename IterativeSolver<X,X>::template Iteration<unsigned int>;
   };
@@ -1328,8 +1328,8 @@ private:
        \copydoc LoopSolver::LoopSolver(const L&,P&,double,int,int)
        \param restart number of GMRes cycles before restart
      */
-    GeneralizedPCGSolver (const LinearOperator<X,X>& op, Preconditioner<X,X>& prec, scalar_real_type reduction, int maxit, int verbose, int restart = 10) :
-      IterativeSolver<X,X>::IterativeSolver(op,prec,reduction,maxit,verbose),
+    GeneralizedPCGSolver (const LinearOperator<X,X>& op, Preconditioner<X,X>& prec, scalar_real_type reduction, int maxit, int verbosity, int restart = 10) :
+      IterativeSolver<X,X>::IterativeSolver(op,prec,reduction,maxit,verbosity),
       _restart(restart)
     {}
 
@@ -1340,8 +1340,8 @@ private:
        \param restart When to restart the construction of
        the Krylov search space.
      */
-    GeneralizedPCGSolver (const LinearOperator<X,X>& op, const ScalarProduct<X>& sp, Preconditioner<X,X>& prec, scalar_real_type reduction, int maxit, int verbose, int restart = 10) :
-      IterativeSolver<X,X>::IterativeSolver(op,sp,prec,reduction,maxit,verbose),
+    GeneralizedPCGSolver (const LinearOperator<X,X>& op, const ScalarProduct<X>& sp, Preconditioner<X,X>& prec, scalar_real_type reduction, int maxit, int verbosity, int restart = 10) :
+      IterativeSolver<X,X>::IterativeSolver(op,sp,prec,reduction,maxit,verbosity),
       _restart(restart)
     {}
 
@@ -1377,9 +1377,9 @@ private:
     GeneralizedPCGSolver (std::shared_ptr<const LinearOperator<X,X>> op,
                           std::shared_ptr<const ScalarProduct<X>> sp,
                           std::shared_ptr<Preconditioner<X,X>> prec,
-                          scalar_real_type reduction, int maxit, int verbose,
+                          scalar_real_type reduction, int maxit, int verbosity,
                           int restart = 10) :
-      IterativeSolver<X,X>::IterativeSolver(op,sp,prec,reduction,maxit,verbose),
+      IterativeSolver<X,X>::IterativeSolver(op,sp,prec,reduction,maxit,verbosity),
       _restart(restart)
     {}
 
@@ -1479,7 +1479,7 @@ private:
     using IterativeSolver<X,X>::_sp;
     using IterativeSolver<X,X>::_reduction;
     using IterativeSolver<X,X>::_maxit;
-    using IterativeSolver<X,X>::_verbose;
+    using IterativeSolver<X,X>::_verbosity;
     using Iteration = typename IterativeSolver<X,X>::template Iteration<unsigned int>;
     int _restart;
   };
@@ -1516,7 +1516,7 @@ private:
       \param mmax is the maximal number of previous vectors which are orthogonalized against the new search direction.
     */
     RestartedFCGSolver (const LinearOperator<X,X>& op, Preconditioner<X,X>& prec,
-                        scalar_real_type reduction, int maxit, int verbose, int mmax = 10) : IterativeSolver<X,X>(op, prec, reduction, maxit, verbose), _mmax(mmax)
+                        scalar_real_type reduction, int maxit, int verbosity, int mmax = 10) : IterativeSolver<X,X>(op, prec, reduction, maxit, verbosity), _mmax(mmax)
     {
     }
 
@@ -1526,7 +1526,7 @@ private:
       \param mmax is the maximal number of previous vectors which are orthogonalized against the new search direction.
     */
     RestartedFCGSolver (const LinearOperator<X,X>& op, const ScalarProduct<X>& sp, Preconditioner<X,X>& prec,
-                        scalar_real_type reduction, int maxit, int verbose, int mmax = 10) : IterativeSolver<X,X>(op, sp, prec, reduction, maxit, verbose), _mmax(mmax)
+                        scalar_real_type reduction, int maxit, int verbosity, int mmax = 10) : IterativeSolver<X,X>(op, sp, prec, reduction, maxit, verbosity), _mmax(mmax)
     {
     }
 
@@ -1538,9 +1538,9 @@ private:
     RestartedFCGSolver (std::shared_ptr<const LinearOperator<X,X>> op,
                         std::shared_ptr<const ScalarProduct<X>> sp,
                         std::shared_ptr<Preconditioner<X,X>> prec,
-                        scalar_real_type reduction, int maxit, int verbose,
+                        scalar_real_type reduction, int maxit, int verbosity,
                         int mmax = 10)
-      : IterativeSolver<X,X>(op, sp, prec, reduction, maxit, verbose), _mmax(mmax)
+      : IterativeSolver<X,X>(op, sp, prec, reduction, maxit, verbosity), _mmax(mmax)
     {}
 
     /*!
@@ -1664,7 +1664,7 @@ private:
     using IterativeSolver<X,X>::_sp;
     using IterativeSolver<X,X>::_reduction;
     using IterativeSolver<X,X>::_maxit;
-    using IterativeSolver<X,X>::_verbose;
+    using IterativeSolver<X,X>::_verbosity;
     using Iteration = typename IterativeSolver<X,X>::template Iteration<unsigned int>;
   };
   DUNE_REGISTER_ITERATIVE_SOLVER("restartedfcgsolver", defaultIterativeSolverCreator<Dune::RestartedFCGSolver>());
@@ -1727,7 +1727,7 @@ private:
     using RestartedFCGSolver<X>::_sp;
     using RestartedFCGSolver<X>::_reduction;
     using RestartedFCGSolver<X>::_maxit;
-    using RestartedFCGSolver<X>::_verbose;
+    using RestartedFCGSolver<X>::_verbosity;
   };
   DUNE_REGISTER_ITERATIVE_SOLVER("completefcgsolver", defaultIterativeSolverCreator<Dune::CompleteFCGSolver>());
   /** @} end documentation */

@@ -114,7 +114,7 @@ namespace Dune{
      preconditioner:
      \verbatim
      type = cgsolver
-     verbose = 1
+     verbosity = 1
      maxit = 1000
      reduction = 1e-5
 

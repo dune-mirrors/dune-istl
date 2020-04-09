@@ -83,7 +83,7 @@ TestSuite runUMFPack(std::size_t N)
 
   // compare with setSubMatrix
   solver1.setSubMatrix(mat,mrs);
-  solver1.setVerbosity(true);
+  solver1.setVerbosity(1);
 
   auto x2 = x1;
   x2 = 0;

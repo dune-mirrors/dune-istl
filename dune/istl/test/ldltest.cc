@@ -57,7 +57,7 @@ int main(int argc, char** argv)
       mrs.insert(s);
 
     solver1.setSubMatrix(mat,mrs);
-    solver1.setVerbosity(true);
+    solver1.setVerbosity(1);
 
     solver.apply(x,b, res);
     solver.free();
