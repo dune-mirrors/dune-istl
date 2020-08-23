@@ -106,39 +106,61 @@ endforeach()
 dune_symlink_to_source_files(FILES solverfactorytest.ini)
 
 # SuperLU tests
-  dune_add_test(NAME superlustest
-                SOURCES superlutest.cc
-                COMPILE_DEFINITIONS SUPERLU_NTYPE=0)
+dune_add_test(NAME superlustest
+              SOURCES superlutest.cc
+              COMPILE_DEFINITIONS SUPERLU_NTYPE=0)
 
-  dune_add_test(SOURCES superlutest.cc)
+dune_add_test(SOURCES superlutest.cc)
 
-  dune_add_test(NAME superluctest
-                SOURCES superlutest.cc
-                COMPILE_DEFINITIONS SUPERLU_NTYPE=2)
+dune_add_test(NAME superluctest
+              SOURCES superlutest.cc
+              COMPILE_DEFINITIONS SUPERLU_NTYPE=2)
 
-  dune_add_test(NAME superluztest
-                SOURCES superlutest.cc
-                COMPILE_DEFINITIONS SUPERLU_NTYPE=3)
+dune_add_test(NAME superluztest
+              SOURCES superlutest.cc
+              COMPILE_DEFINITIONS SUPERLU_NTYPE=3)
 
-  dune_add_test(SOURCES complexrhstest.cc
-                COMPILE_DEFINITIONS SUPERLU_NTYPE=3)
+dune_add_test(SOURCES complexrhstest.cc
+              COMPILE_DEFINITIONS SUPERLU_NTYPE=3)
+
+if (SuperLU_FOUND)
+  add_dune_superlu_flags(superlustest superluctest superluztest complexrhstest)
+endif ()
 
 # SuiteSparse tests
-  dune_add_test(SOURCES umfpacktest.cc
-              CMAKE_GUARD SuiteSparse_UMFPACK_FOUND)
-  set_directory_properties(PROPERTIES ADDITIONAL_MAKE_CLEAN_FILES "umfpack_decomp")
+dune_add_test(SOURCES umfpacktest.cc
+            CMAKE_GUARD SuiteSparse_UMFPACK_FOUND)
+set_directory_properties(PROPERTIES ADDITIONAL_MAKE_CLEAN_FILES "umfpack_decomp")
+if (SuiteSparse_UMFPACK_FOUND)
+  add_dune_suitesparse_flags(umfpacktest)
+endif ()
 
 dune_add_test(SOURCES ldltest.cc
               CMAKE_GUARD SuiteSparse_LDL_FOUND)
+if (SuiteSparse_LDL_FOUND)
+  add_dune_suitesparse_flags(ldltest)
+endif ()
 
 dune_add_test(SOURCES spqrtest.cc
               CMAKE_GUARD SuiteSparse_SPQR_FOUND)
+if (SuiteSparse_SPQR_FOUND)
+  add_dune_suitesparse_flags(spqrtest)
+endif ()
 
 dune_add_test(SOURCES overlappingschwarztest.cc
               CMAKE_GUARD "SUPERLU_FOUND OR SuiteSparse_UMFPACK_FOUND")
+if (SuiteSparse_UMFPACK_FOUND)
+  add_dune_suitesparse_flags(overlappingschwarztest)
+endif ()
+if (TARGET SuperLU::SuperLU)
+  add_dune_superlu_flags(overlappingschwarztest)
+endif ()
 
 dune_add_test(SOURCES cholmodtest.cc
               CMAKE_GUARD SuiteSparse_CHOLMOD_FOUND)
+if (SuiteSparse_CHOLMOD_FOUND)
+  add_dune_suitesparse_flags(cholmodtest)
+endif ()
 
 dune_add_test(SOURCES registrytest.cc)
 
