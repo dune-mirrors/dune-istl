@@ -1,8 +1,6 @@
 # set up project
-project(dune-istl C CXX)
-
-# general stuff
 cmake_minimum_required(VERSION 3.13)
+project(dune-istl VERSION 2.8.0 LANGUAGES CXX)
 
 # guess build tree of dune-common
 if(NOT (dune-common_DIR OR dune-common_ROOT OR
