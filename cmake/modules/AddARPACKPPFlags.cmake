@@ -10,6 +10,9 @@
 #       A list of targets to use ARPACKPP with.
 #
 
+# set HAVE_ARPACKPP for config.h
+set(HAVE_ARPACKPP ${ARPACKPP_FOUND})
+
 function(add_dune_arpackpp_flags _targets)
   if(ARPACKPP_FOUND)
     foreach(_target ${_targets})
