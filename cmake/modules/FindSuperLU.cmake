@@ -127,8 +127,6 @@ if(SUPERLU_FOUND)
     "Determining location of ${SUPERLU_WITH_VERSION} succeeded:\n"
     "Include directory: ${SUPERLU_INCLUDE_DIRS}\n"
     "Library directory: ${SUPERLU_LIBRARIES}\n\n")
-  set(SUPERLU_DUNE_COMPILE_FLAGS "-I${SUPERLU_INCLUDE_DIRS}"
-    CACHE STRING "Compile flags used by DUNE when compiling SuperLU programs")
   set(SUPERLU_DUNE_LIBRARIES ${SUPERLU_LIBRARIES} ${BLAS_LIBRARIES}
     CACHE STRING "Libraries used by DUNE when linking SuperLU programs")
 else(SUPERLU_FOUND)
@@ -139,16 +137,6 @@ else(SUPERLU_FOUND)
     "Library directory: ${SUPERLU_LIBRARIES}\n"
     "Found unsupported version: ${SUPERLU_WITH_VERSION}\n\n")
 endif(SUPERLU_FOUND)
-
-# set HAVE_SUPERLU for config.h
-set(HAVE_SUPERLU ${SUPERLU_FOUND})
-
-# register all superlu related flags
-if(SUPERLU_FOUND)
-  dune_register_package_flags(COMPILE_DEFINITIONS "ENABLE_SUPERLU=1"
-                              LIBRARIES "${SUPERLU_DUNE_LIBRARIES}"
-                              INCLUDE_DIRS "${SUPERLU_INCLUDE_DIRS}")
-endif()
 
 # text for feature summary
 set_package_properties("SuperLU" PROPERTIES

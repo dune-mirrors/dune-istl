@@ -1,8 +1,6 @@
 # set up project
-project(dune-istl C CXX)
-
-# general stuff
 cmake_minimum_required(VERSION 3.13)
+project(dune-istl VERSION 2.8.0 LANGUAGES CXX)
 
 # guess build tree of dune-common
 if(NOT (dune-common_DIR OR dune-common_ROOT OR
@@ -14,8 +12,7 @@ endif()
 
 #find dune-common and set the module path
 find_package(dune-common REQUIRED)
-list(APPEND CMAKE_MODULE_PATH ${dune-common_MODULE_PATH}
-  "${PROJECT_SOURCE_DIR}/cmake/modules")
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules)
 
 #include the dune macros
 include(DuneMacros)
