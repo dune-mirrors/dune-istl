@@ -178,7 +178,7 @@ namespace Dune
   struct SuperMatrixInitializer
   {};
 
-  template<class T>
+  template<class T, class X, class Y>
   class SuperLU;
 
   template<class M, class X, class TM, class TD, class T1>
@@ -201,7 +201,8 @@ namespace Dune
     /** @brief The type of the matrix to convert. */
     typedef BCRSMatrix<B,TA> Matrix;
 
-    friend struct SeqOverlappingSchwarzAssemblerHelper<SuperLU<Matrix>, true>;
+    template<class, bool>
+    friend struct SeqOverlappingSchwarzAssemblerHelper;
 
     typedef typename Matrix::size_type size_type;
 

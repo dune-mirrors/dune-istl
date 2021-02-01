@@ -263,11 +263,11 @@ namespace Dune
    * 2: std::complex<float>, 3: std::complex<double>)
    * if the numeric type should be different from double.
    */
-  template<typename M>
+  template<typename M,
+           typename Dom = typename Impl::SuperLUVectorChooser<M>::domain_type,
+           typename Ran = typename Impl::SuperLUVectorChooser<M>::range_type>
   class SuperLU
-    : public InverseOperator<
-          typename Impl::SuperLUVectorChooser<M>::domain_type,
-          typename Impl::SuperLUVectorChooser<M>::range_type >
+    : public InverseOperator<Dom, Ran>
   {
     using T = typename M::field_type;
   public:
@@ -279,9 +279,9 @@ namespace Dune
     /** @brief Type of an associated initializer class. */
     typedef SuperMatrixInitializer<Matrix> MatrixInitializer;
     /** @brief The type of the domain of the solver. */
-    using domain_type = typename Impl::SuperLUVectorChooser<M>::domain_type;
+    using domain_type = Dom;
     /** @brief The type of the range of the solver. */
-    using range_type = typename Impl::SuperLUVectorChooser<M>::range_type;
+    using range_type = Ran;
 
     //! Category of the solver (see SolverCategory::Category)
     SolverCategory::Category category() const override
@@ -372,7 +372,7 @@ namespace Dune
   private:
     template<class Mat,class X, class TM, class TD, class T1>
     friend class SeqOverlappingSchwarz;
-    friend struct SeqOverlappingSchwarzAssemblerHelper<SuperLU<Matrix>,true>;
+    friend struct SeqOverlappingSchwarzAssemblerHelper<SuperLU<Matrix,Dom,Ran>,true>;
 
     SuperLUMatrix& getInternalMatrix() { return mat; }
 
@@ -391,16 +391,16 @@ namespace Dune
     bool first, verbose, reusevector;
   };
 
-  template<typename M>
-  SuperLU<M>
+  template<typename M, typename Dom, typename Ran>
+  SuperLU<M,Dom, Ran>
   ::~SuperLU()
   {
     if(mat.N()+mat.M()>0)
       free();
   }
 
-  template<typename M>
-  void SuperLU<M>::free()
+  template<typename M, typename Dom, typename Ran>
+  void SuperLU<M, Dom, Ran>::free()
   {
     delete[] perm_c;
     delete[] perm_r;
@@ -419,8 +419,8 @@ namespace Dune
     mat.free();
   }
 
-  template<typename M>
-  SuperLU<M>
+  template<typename M, typename Dom, typename Ran>
+  SuperLU<M, Dom, Ran>
   ::SuperLU(const Matrix& mat_, bool verbose_, bool reusevector_)
     : work(0), lwork(0), first(true), verbose(verbose_),
       reusevector(reusevector_)
@@ -428,19 +428,19 @@ namespace Dune
     setMatrix(mat_);
 
   }
-  template<typename M>
-  SuperLU<M>::SuperLU()
+  template<typename M, typename Dom, typename Ran>
+  SuperLU<M,Dom,Ran>::SuperLU()
     :    work(0), lwork(0),verbose(false),
       reusevector(false)
   {}
-  template<typename M>
-  void SuperLU<M>::setVerbosity(bool v)
+  template<typename M, typename Dom, typename Ran>
+  void SuperLU<M,Dom, Ran>::setVerbosity(bool v)
   {
     verbose=v;
   }
 
-  template<typename M>
-  void SuperLU<M>::setMatrix(const Matrix& mat_)
+  template<typename M, typename Dom, typename Ran>
+  void SuperLU<M,Dom,Ran>::setMatrix(const Matrix& mat_)
   {
     if(mat.N()+mat.M()>0) {
       free();
@@ -452,9 +452,9 @@ namespace Dune
     decompose();
   }
 
-  template<typename M>
+  template<typename M, typename Dom, typename Ran>
   template<class S>
-  void SuperLU<M>::setSubMatrix(const Matrix& mat_,
+  void SuperLU<M,Dom,Ran>::setSubMatrix(const Matrix& mat_,
                                                                 const S& mrs)
   {
     if(mat.N()>0 or mat.M()>0) {
@@ -467,8 +467,8 @@ namespace Dune
     decompose();
   }
 
-  template<typename M>
-  void SuperLU<M>::decompose()
+  template<typename M, typename Dom, typename Ran>
+  void SuperLU<M,Dom,Ran>::decompose()
   {
 
     first = true;
@@ -558,8 +558,8 @@ namespace Dune
     options.Fact = FACTORED;
   }
 
-  template<typename M>
-  void SuperLU<M>
+  template<typename M, typename Dom, typename Ran>
+  void SuperLU<M,Dom,Ran>
   ::apply(domain_type& x, range_type& b, InverseOperatorResult& res)
   {
     if (mat.N() != b.dim())
@@ -647,8 +647,8 @@ namespace Dune
     }
   }
 
-  template<typename M>
-  void SuperLU<M>
+  template<typename M, typename Dom, typename Ran>
+  void SuperLU<M,Dom,Ran>
   ::apply(T* x, T* b)
   {
     if(mat.N()+mat.M()==0)
@@ -712,14 +712,14 @@ namespace Dune
   }
   /** @} */
 
-  template<typename T, typename A>
-  struct IsDirectSolver<SuperLU<BCRSMatrix<T,A> > >
+  template<typename T, typename A, typename Dom, typename Ran>
+  struct IsDirectSolver<SuperLU<BCRSMatrix<T,A>, Dom, Ran > >
   {
     enum { value=true};
   };
 
-  template<typename T, typename A>
-  struct StoresColumnCompressed<SuperLU<BCRSMatrix<T,A> > >
+  template<typename T, typename A, typename Dom, typename Ran>
+  struct StoresColumnCompressed<SuperLU<BCRSMatrix<T,A>, Dom, Ran >>
   {
     enum { value = true };
   };
@@ -731,6 +731,8 @@ namespace Dune
                        {
                          using OpTraits = decltype(opTraits);
                          using M = typename OpTraits::matrix_type;
+                         using X = typename OpTraits::domain_type;
+                         using Y = typename OpTraits::range_type;
                          // works only for sequential operators
                          if constexpr (OpTraits::isParallel){
                            if(opTraits.getCommOrThrow(op).communicator().size() > 1)
@@ -742,14 +744,14 @@ namespace Dune
                            // check if SuperLU<M>* is convertible to
                            // InverseOperator*. This checks compatibility of the
                            // domain and range types
-                           if constexpr (std::is_convertible_v<SuperLU<M>*,
+                           if constexpr (std::is_convertible_v<SuperLU<M,X,Y>*,
                                          Dune::InverseOperator<typename OpTraits::domain_type,
                                          typename OpTraits::range_type>*>
                                          ){
                              const auto& A = opTraits.getAssembledOpOrThrow(op);
                              const M& mat = A->getmat();
                              int verbose = config.get("verbose", 0);
-                             return std::make_shared<Dune::SuperLU<M>>(mat,verbose);
+                             return std::make_shared<Dune::SuperLU<M,X,Y>>(mat,verbose);
                            }
                          }
                          DUNE_THROW(UnsupportedType,

@@ -205,8 +205,11 @@ namespace Dune {
    *
    * \note This will only work if dune-istl has been configured to use UMFPack
    */
-  template<typename M>
-  class UMFPack : public InverseOperator<Impl::UMFPackDomainType<M>,Impl::UMFPackRangeType<M>>
+  template<typename M,
+           typename X = typename Impl::UMFPackVectorChooser<M>::domain_type,
+           typename Y = typename Impl::UMFPackVectorChooser<M>::range_type>
+  class UMFPack
+    : public InverseOperator<X, Y>
   {
     using T = typename M::field_type;
 
@@ -221,9 +224,9 @@ namespace Dune {
     /** @brief Type of an associated initializer class. */
     using MatrixInitializer = ISTL::Impl::BCCSMatrixInitializer<M, size_type>;
     /** @brief The type of the domain of the solver. */
-    using domain_type = Impl::UMFPackDomainType<M>;
+    using domain_type = X;
     /** @brief The type of the range of the solver. */
-    using range_type = Impl::UMFPackRangeType<M>;
+    using range_type = Y;
 
     //! Category of the solver (see SolverCategory::Category)
     SolverCategory::Category category() const override
@@ -701,9 +704,9 @@ namespace Dune {
     private:
     typedef typename Dune::UMFPackMethodChooser<T> Caller;
 
-    template<class Mat,class X, class TM, class TD, class T1>
+    template<class Mat,class Domain, class TM, class TD, class T1>
     friend class SeqOverlappingSchwarz;
-    friend struct SeqOverlappingSchwarzAssemblerHelper<UMFPack<Matrix>,true>;
+    friend struct SeqOverlappingSchwarzAssemblerHelper<UMFPack<Matrix,X,Y>,true>;
 
     /** @brief computes the LU Decomposition */
     void decompose()
@@ -783,9 +786,7 @@ namespace Dune {
     template<class OpTraits, class=void> struct isValidBlock : std::false_type{};
     template<class OpTraits> struct isValidBlock<OpTraits,
       std::enable_if_t<
-           std::is_same_v<Impl::UMFPackDomainType<typename OpTraits::matrix_type>, typename OpTraits::domain_type>
-        && std::is_same_v<Impl::UMFPackRangeType<typename OpTraits::matrix_type>, typename OpTraits::range_type>
-        && std::is_same_v<typename FieldTraits<typename OpTraits::domain_type::field_type>::real_type, double>
+           std::is_same_v<typename FieldTraits<typename OpTraits::domain_type::field_type>::real_type, double>
         && std::is_same_v<typename FieldTraits<typename OpTraits::range_type::field_type>::real_type, double>
       >> : std::true_type {};
   }
@@ -801,13 +802,15 @@ namespace Dune {
                          }
                          if constexpr (OpTraits::isAssembled){
                            using M = typename OpTraits::matrix_type;
-                           // check if UMFPack<M>* is convertible to
+                           using X = typename OpTraits::domain_type;
+                           using Y = typename OpTraits::range_type;
+                           // check if UMFPack<M,X,Y>* is convertible to
                            // InverseOperator*. This checks compatibility of the
                            // domain and range types
                            if constexpr (UMFPackImpl::isValidBlock<OpTraits>::value) {
                              const auto& A = opTraits.getAssembledOpOrThrow(op);
                              const M& mat = A->getmat();
-                             return std::make_shared<Dune::UMFPack<M>>(mat, config);
+                             return std::make_shared<Dune::UMFPack<M,X,Y>>(mat, config);
                            }
                          }
                          DUNE_THROW(UnsupportedType,
