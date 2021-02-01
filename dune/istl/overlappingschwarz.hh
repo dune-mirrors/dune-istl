@@ -307,11 +307,11 @@ namespace Dune
   };
 
 #if HAVE_SUPERLU || HAVE_SUITESPARSE_UMFPACK
-  template<template<class> class S, typename T, typename A>
-  struct OverlappingAssignerHelper<S<BCRSMatrix<T, A>>, true>
+  template<template<class,class,class> class S, typename T, typename A, class X, class Y>
+  struct OverlappingAssignerHelper<S<BCRSMatrix<T, A>,X,Y>, true>
   {
     typedef BCRSMatrix<T, A> matrix_type;
-    typedef typename S<BCRSMatrix<T, A>>::range_type range_type;
+    typedef typename S<BCRSMatrix<T, A>,X,Y>::range_type range_type;
     typedef typename range_type::field_type field_type;
     typedef typename range_type::block_type block_type;
 
@@ -706,8 +706,8 @@ namespace Dune
                                              bool onTheFly);
   };
 
-  template<template<class> class S, typename T, typename A>
-  struct SeqOverlappingSchwarzAssemblerHelper<S<BCRSMatrix<T,A>>,true>
+  template<template<class,class,class> class S, typename T, typename A, class X, class Y>
+  struct SeqOverlappingSchwarzAssemblerHelper<S<BCRSMatrix<T,A>,X,Y>,true>
   {
     typedef BCRSMatrix<T,A> matrix_type;
     static constexpr size_t n = std::decay_t<decltype(Impl::asMatrix(std::declval<T>()))>::rows;
@@ -1146,15 +1146,15 @@ namespace Dune
   }
 
 #if HAVE_SUPERLU || HAVE_SUITESPARSE_UMFPACK
-  template<template<class> class S, typename T, typename A>
+  template<template<class,class,class> class S, typename T, typename A, class X, class Y>
   template<class RowToDomain, class Solvers, class SubDomains>
-  std::size_t SeqOverlappingSchwarzAssemblerHelper<S<BCRSMatrix<T,A>>,true>::assembleLocalProblems(const RowToDomain& rowToDomain,
+  std::size_t SeqOverlappingSchwarzAssemblerHelper<S<BCRSMatrix<T,A>,X,Y>,true>::assembleLocalProblems(const RowToDomain& rowToDomain,
                                                                                                    const matrix_type& mat,
                                                                                                    Solvers& solvers,
                                                                                                    const SubDomains& subDomains,
                                                                                                    bool onTheFly)
   {
-    typedef typename S<BCRSMatrix<T,A>>::MatrixInitializer MatrixInitializer;
+    typedef typename S<BCRSMatrix<T,A>,X,Y>::MatrixInitializer MatrixInitializer;
     typedef typename std::vector<MatrixInitializer>::iterator InitializerIterator;
     typedef typename SubDomains::const_iterator DomainIterator;
     typedef typename Solvers::iterator SolverIterator;
@@ -1395,8 +1395,8 @@ namespace Dune
 
 #if HAVE_SUPERLU || HAVE_SUITESPARSE_UMFPACK
 
-  template<template<class> class S, typename T, typename A>
-  OverlappingAssignerHelper<S<BCRSMatrix<T,A>>,true>
+  template<template<class,class,class> class S, typename T, typename A, class X, class Y>
+  OverlappingAssignerHelper<S<BCRSMatrix<T,A>,X,Y>,true>
   ::OverlappingAssignerHelper(std::size_t maxlength,
                         const BCRSMatrix<T,A>& mat_,
                         const range_type& b_,
@@ -1410,15 +1410,15 @@ namespace Dune
 
   }
 
-  template<template<class> class S, typename T, typename A>
-  void OverlappingAssignerHelper<S<BCRSMatrix<T,A> >,true>::deallocate()
+  template<template<class,class,class> class S, typename T, typename A,class X, class Y>
+  void OverlappingAssignerHelper<S<BCRSMatrix<T,A>,X,Y>,true>::deallocate()
   {
     delete[] rhs_;
     delete[] lhs_;
   }
 
-  template<template<class> class S, typename T, typename A>
-  void OverlappingAssignerHelper<S<BCRSMatrix<T,A>>,true>::operator()(const size_type& domainIndex)
+  template<template<class,class,class> class S, typename T, typename A,class X,class Y>
+  void OverlappingAssignerHelper<S<BCRSMatrix<T,A>,X,Y>,true>::operator()(const size_type& domainIndex)
   {
     //assign right hand side of current domainindex block
     // rhs is an array of doubles!
@@ -1446,8 +1446,8 @@ namespace Dune
 
   }
 
-  template<template<class> class S, typename T, typename A>
-  void OverlappingAssignerHelper<S<BCRSMatrix<T,A>>,true>::relaxResult(field_type relax)
+  template<template<class,class,class> class S, typename T, typename A,class X,class Y>
+  void OverlappingAssignerHelper<S<BCRSMatrix<T,A>,X,Y>,true>::relaxResult(field_type relax)
   {
     for(size_type j=i+n; i<j; ++i) {
       assert(i<maxlength_);
@@ -1456,8 +1456,8 @@ namespace Dune
     i-=n;
   }
 
-  template<template<class> class S, typename T, typename A>
-  void OverlappingAssignerHelper<S<BCRSMatrix<T,A>>,true>::assignResult(block_type& res)
+  template<template<class,class,class> class S, typename T, typename A,class X,class Y>
+  void OverlappingAssignerHelper<S<BCRSMatrix<T,A>,X,Y>,true>::assignResult(block_type& res)
   {
     // assign the result of the local solve to the global vector
     for(size_type j=0; j<n; ++j, ++i) {
@@ -1466,22 +1466,22 @@ namespace Dune
     }
   }
 
-  template<template<class> class S, typename T, typename A>
-  void OverlappingAssignerHelper<S<BCRSMatrix<T,A>>,true>::resetIndexForNextDomain()
+  template<template<class,class,class> class S, typename T, typename A,class X,class Y>
+  void OverlappingAssignerHelper<S<BCRSMatrix<T,A>,X,Y>,true>::resetIndexForNextDomain()
   {
     i=0;
   }
 
-  template<template<class> class S, typename T, typename A>
-  typename OverlappingAssignerHelper<S<BCRSMatrix<T,A>>,true>::field_type*
-  OverlappingAssignerHelper<S<BCRSMatrix<T,A>>,true>::lhs()
+  template<template<class,class,class> class S, typename T, typename A,class X, class Y>
+  typename OverlappingAssignerHelper<S<BCRSMatrix<T,A>,X,Y>,true>::field_type*
+  OverlappingAssignerHelper<S<BCRSMatrix<T,A>,X,Y>,true>::lhs()
   {
     return lhs_;
   }
 
-  template<template<class> class S, typename T, typename A>
-  typename OverlappingAssignerHelper<S<BCRSMatrix<T,A>>,true>::field_type*
-  OverlappingAssignerHelper<S<BCRSMatrix<T,A>>,true>::rhs()
+  template<template<class,class,class> class S, typename T, typename A,class X,class Y>
+  typename OverlappingAssignerHelper<S<BCRSMatrix<T,A>,X,Y>,true>::field_type*
+  OverlappingAssignerHelper<S<BCRSMatrix<T,A>,X,Y>,true>::rhs()
   {
     return rhs_;
   }

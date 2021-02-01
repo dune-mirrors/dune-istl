@@ -206,11 +206,11 @@ namespace Dune {
    *
    * \note This will only work if dune-istl has been configured to use UMFPack
    */
-  template<typename M>
+  template<typename M,
+           typename X = typename Impl::UMFPackVectorChooser<M>::domain_type,
+           typename Y = typename Impl::UMFPackVectorChooser<M>::range_type>
   class UMFPack
-      : public InverseOperator<
-          typename Impl::UMFPackVectorChooser<M>::domain_type,
-          typename Impl::UMFPackVectorChooser<M>::range_type >
+    : public InverseOperator<X, Y>
   {
     using T = typename M::field_type;
 
@@ -223,9 +223,9 @@ namespace Dune {
     /** @brief Type of an associated initializer class. */
     typedef ISTL::Impl::BCCSMatrixInitializer<M, long int> MatrixInitializer;
     /** @brief The type of the domain of the solver. */
-    using domain_type = typename Impl::UMFPackVectorChooser<M>::domain_type;
+    using domain_type = X;
     /** @brief The type of the range of the solver. */
-    using range_type = typename Impl::UMFPackVectorChooser<M>::range_type;
+    using range_type = Y;
 
     //! Category of the solver (see SolverCategory::Category)
     virtual SolverCategory::Category category() const
@@ -534,9 +534,9 @@ namespace Dune {
     private:
     typedef typename Dune::UMFPackMethodChooser<T> Caller;
 
-    template<class Mat,class X, class TM, class TD, class T1>
+    template<class Mat,class Domain, class TM, class TD, class T1>
     friend class SeqOverlappingSchwarz;
-    friend struct SeqOverlappingSchwarzAssemblerHelper<UMFPack<Matrix>,true>;
+    friend struct SeqOverlappingSchwarzAssemblerHelper<UMFPack<Matrix,X,Y>,true>;
 
     /** @brief computes the LU Decomposition */
     void decompose()
@@ -617,8 +617,10 @@ namespace Dune {
       std::enable_if_t<
                 isValidBlock<typename Dune::TypeListElement<1, TL>::type::block_type>::value,int> = 0) const
     {
+      using X = typename Dune::TypeListElement<1, TL>::type;
+      using Y = typename Dune::TypeListElement<2, TL>::type;
       int verbose = config.get("verbose", 0);
-      return std::make_shared<Dune::UMFPack<M>>(mat,verbose);
+      return std::make_shared<Dune::UMFPack<M,X,Y>>(mat,verbose);
     }
 
     // second version with SFINAE to validate the template parameters of UMFPack
