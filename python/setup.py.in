@@ -1,6 +1,6 @@
 from setuptools import setup, find_namespace_packages
 
-pkg = [m for m in "${ProjectPythonRequires} ${dune-istl_DEPENDS}".split(' ')]
+pkg = '${ProjectPythonRequires} ${ALL_DEPENDENCIES}'.replace(';',' ').split(' ')
 
 setup(name="${ProjectName}",
     packages=find_namespace_packages(include=['dune.*']),
