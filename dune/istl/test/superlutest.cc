@@ -8,6 +8,7 @@
 #include <dune/common/fmatrix.hh>
 #include <dune/common/fvector.hh>
 #include <dune/common/timer.hh>
+#include <dune/common/alignedallocator.hh>
 
 #include <dune/istl/bvector.hh>
 #include <dune/istl/operators.hh>
@@ -35,11 +36,11 @@ void runSuperLU(std::size_t N)
 
   watch.reset();
 
-  Dune::SuperLU<Matrix> solver(mat, true);
+  Dune::SuperLU<Matrix,Vector,Vector> solver(mat, true);
 
   Dune::InverseOperatorResult res;
 
-  Dune::SuperLU<Matrix> solver1;
+  Dune::SuperLU<Matrix, Vector, Vector> solver1;
 
   solver.setVerbosity(true);
   solver.apply(x,b, res);
@@ -182,6 +183,16 @@ try
   {
     using Matrix = Dune::BCRSMatrix<Dune::FieldMatrix<std::complex<double>,2,2> >;
     using Vector = Dune::BlockVector<Dune::FieldVector<std::complex<double>,2> >;
+    runSuperLU<Matrix,Vector>(N);
+  }
+#endif
+
+  // test with different vector type (see !423)
+  // ------------------------------------------------------------------------------
+#if __has_include("slu_ddefs.h")
+  {
+    using Matrix = Dune::BCRSMatrix<double>;
+    using Vector = Dune::BlockVector<double, Dune::AlignedAllocator<double>>;
     runSuperLU<Matrix,Vector>(N);
   }
 #endif

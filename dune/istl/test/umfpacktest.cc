@@ -10,6 +10,8 @@
 #include <dune/common/parametertree.hh>
 #include <dune/common/timer.hh>
 #include <dune/common/test/testsuite.hh>
+#include <dune/common/alignedallocator.hh>
+
 #include <dune/istl/bvector.hh>
 #include <dune/istl/umfpack.hh>
 
@@ -37,7 +39,7 @@ TestSuite runUMFPack(std::size_t N)
 
   watch.reset();
 
-  Dune::UMFPack<Matrix> solver(mat,1);
+  Dune::UMFPack<Matrix, Vector, Vector> solver(mat,1);
 
   Dune::InverseOperatorResult res;
 
@@ -49,7 +51,7 @@ TestSuite runUMFPack(std::size_t N)
   mat.mmv(x,b);
   t.check( b.two_norm()/norm < 1e-11 ) << " Error in UMFPACK, relative residual is too large: " << b.two_norm()/norm;
 
-  Dune::UMFPack<Matrix> solver1;
+  Dune::UMFPack<Matrix, Vector, Vector> solver1;
 
   std::set<typename Matrix::size_type> mrs;
   BitVector bitVector(N*N);
@@ -97,8 +99,8 @@ TestSuite runUMFPack(std::size_t N)
   solver1.apply(reinterpret_cast<typename Matrix::field_type*>(&x1[0]),
                 reinterpret_cast<typename Matrix::field_type*>(&b1[0]));
 
-  Dune::UMFPack<Matrix> save_solver(mat,"umfpack_decomp",0);
-  Dune::UMFPack<Matrix> load_solver(mat,"umfpack_decomp",0);
+  Dune::UMFPack<Matrix, Vector, Vector> save_solver(mat,"umfpack_decomp",0);
+  Dune::UMFPack<Matrix, Vector, Vector> load_solver(mat,"umfpack_decomp",0);
 
   return t;
 }
@@ -143,7 +145,7 @@ TestSuite runUMFPackMultitype2x2(std::size_t N)
 
   watch.reset();
 
-  Dune::UMFPack<Matrix> solver(mat,1);
+  Dune::UMFPack<Matrix, Vector, Vector> solver(mat,1);
 
   Dune::InverseOperatorResult res;
 
@@ -155,7 +157,7 @@ TestSuite runUMFPackMultitype2x2(std::size_t N)
   mat.mmv(x,b);
   t.check( b.two_norm()/norm < 1e-11 ) << " Error in UMFPACK, relative residual is too large: " << b.two_norm()/norm;
 
-  Dune::UMFPack<Matrix> solver1;
+  Dune::UMFPack<Matrix, Vector, Vector> solver1;
 
   BitVector bitVector;
   bitVector[_0].resize(N*N);
@@ -209,7 +211,7 @@ TestSuite runUMFPackWithConfig(std::size_t N)
   setupLaplacian(mat, N, 100.0);
   b = 1;
 
-  auto checkSolve = [&](Dune::UMFPack<Matrix>& solver, const std::string& label) {
+  auto checkSolve = [&](Dune::UMFPack<Matrix, Vector, Vector>& solver, const std::string& label) {
     x = 0;
     Vector rhs = b;
     Dune::InverseOperatorResult res;
@@ -227,7 +229,7 @@ TestSuite runUMFPackWithConfig(std::size_t N)
   {
     Dune::ParameterTree config;
     config["verbose"] = "0";
-    Dune::UMFPack<Matrix> solver(mat, config);
+    Dune::UMFPack<Matrix, Vector, Vector> solver(mat, config);
     checkSolve(solver, "no ordering key");
     std::cout << "Successfully tested UMFPACK with no ordering specified (UMFPACK defaults)\n";
   }
@@ -241,7 +243,7 @@ TestSuite runUMFPackWithConfig(std::size_t N)
   for (auto ordering : orderings) {
     Dune::ParameterTree config;
     config["ordering"] = ordering;
-    Dune::UMFPack<Matrix> solver(mat, config);
+    Dune::UMFPack<Matrix, Vector, Vector> solver(mat, config);
     checkSolve(solver, "ordering=" + ordering);
 
     std::cout << "Successfully tested UMFPACK with ordering '" << ordering << "'\n";
@@ -253,7 +255,7 @@ TestSuite runUMFPackWithConfig(std::size_t N)
     config["ordering"] = "invalid_ordering";
     bool threw = false;
     try {
-      Dune::UMFPack<Matrix> solver(mat, config);
+      Dune::UMFPack<Matrix, Vector, Vector> solver(mat, config);
     } catch (const Dune::NotImplemented&) {
       threw = true;
     }
@@ -299,6 +301,15 @@ int main(int argc, char** argv) try
     using Vector    = Dune::BlockVector<Dune::FieldVector<double,2> >;
     using BitVector = Dune::BlockVector<Dune::FieldVector<int,2> >;
     t.subTest(runUMFPack<Matrix,Vector,BitVector>(N));
+  }
+
+  // test with different vector type
+  std::cout<<"testing for UMFPack with a different vector"<<std::endl;
+  {
+    using Matrix = Dune::BCRSMatrix<double>;
+    using Vector = Dune::BlockVector<double, Dune::AlignedAllocator<double>>;
+    using BitVector = Dune::BlockVector<int>;
+    runUMFPack<Matrix,Vector,BitVector>(N);
   }
 
   // ------------------------------------------------------------------------------
