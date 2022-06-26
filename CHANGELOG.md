@@ -24,6 +24,11 @@
   used by `CHOLMOD` itself to store the Cholesky factor.  This can be used to
   use the more advanced features of `CHOLMOD`.
 
+- The `Cholmod` class now has an additional template parameter `Index`, which specifies the
+  type used by `CHOLMOD` for integers.  The types `int` (the default) and `SuiteSparse_long`
+  (which is usually `long int`) are supported.  Use `SuiteSparse_long` if your problems
+  are too big for `int`.
+
 - You can now multiply objects of type `ScaledIdentityMatrix` by scalars
   using `operator*`.
 

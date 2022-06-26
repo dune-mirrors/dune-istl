@@ -70,10 +70,17 @@ namespace Impl{
 /** @brief Dune wrapper for SuiteSparse/CHOLMOD solver
   *
   * This class implements an InverseOperator between Vector types
+  *
+  * \tparam Vector Data type for solution and right-hand-side vectors
+  * \tparam Index Type used by CHOLMOD for indices.  Must be either 'int' or 'SuiteSparse_long'
+  *   (which is usually `long int`).
   */
-template<class Vector>
+template<class Vector, class Index=int>
 class Cholmod : public InverseOperator<Vector, Vector>
 {
+  static_assert(std::is_same_v<Index,int> || std::is_same_v<Index,SuiteSparse_long>,
+                "Index type must be either 'int' or 'SuiteSparse_long'!");
+
 public:
 
   /** @brief Default constructor
@@ -83,7 +90,10 @@ public:
    */
   Cholmod()
   {
-    cholmod_start(&c_);
+    if (std::is_same_v<Index,int>)
+      cholmod_start(&c_);
+    else
+      cholmod_l_start(&c_);
   }
 
   /** @brief Destructor
@@ -93,9 +103,18 @@ public:
    */
   ~Cholmod()
   {
-    if (L_)
-      cholmod_free_factor(&L_, &c_);
-    cholmod_finish(&c_);
+    if (std::is_same_v<Index,int>)
+    {
+      if (L_)
+        cholmod_free_factor(&L_, &c_);
+      cholmod_finish(&c_);
+    }
+    else
+    {
+      if (L_)
+        cholmod_l_free_factor(&L_, &c_);
+      cholmod_l_finish(&c_);
+    }
   }
 
   // forbid copying to avoid freeing memory twice
@@ -142,13 +161,18 @@ public:
     });
 
       // create a cholmod dense object
-    auto b3 = make_cholmod_dense(cholmod_allocate_dense(L_->n, 1, L_->n, CHOLMOD_REAL, &c_), &c_);
+    auto b3 = make_cholmod_dense( (std::is_same_v<Index,int>)
+                                  ? cholmod_allocate_dense(L_->n, 1, L_->n, CHOLMOD_REAL, &c_)
+                                  : cholmod_l_allocate_dense(L_->n, 1, L_->n, CHOLMOD_REAL, &c_), &c_);
+
     // cast because void-ptr
     auto b4 = static_cast<double*>(b3->x);
     std::copy(b2.get(), b2.get() + L_->n, b4);
 
     // solve for a cholmod x object
-    auto x3 = make_cholmod_dense(cholmod_solve(CHOLMOD_A, L_, b3.get(), &c_), &c_);
+    auto x3 = (std::is_same_v<Index,int>)
+      ? make_cholmod_dense(cholmod_solve(CHOLMOD_A, L_, b3.get(), &c_), &c_)
+      : make_cholmod_dense(cholmod_l_solve(CHOLMOD_A, L_, b3.get(), &c_), &c_);
     // cast because void-ptr
     auto xp = static_cast<double*>(x3->x);
 
@@ -230,22 +254,43 @@ public:
     * by DUNE.  So we can just store Mᵀ instead of M (as M = Mᵀ).
     */
     const auto deleter = [c = &this->c_](auto* p) {
-      cholmod_free_sparse(&p, c);
+      if (std::is_same_v<Index,int>)
+        cholmod_free_sparse(&p, c);
+      else
+        cholmod_l_free_sparse(&p, c);
     };
-    auto M = std::unique_ptr<cholmod_sparse, decltype(deleter)>(
-      cholmod_allocate_sparse(N,             // # rows
-                              N,             // # cols
-                              nonZeros,      // # of nonzeroes
-                              1,             // indices are sorted ( 1 = true)
-                              1,             // matrix is "packed" ( 1 = true)
-                              -1,            // stype of matrix ( -1 = consider the lower part only )
-                              CHOLMOD_REAL,  // xtype of matrix ( CHOLMOD_REAL = single array, no complex numbers)
-                              &c_            // cholmod_common ptr
-                             ), deleter);
+
+    cholmod_sparse* rawM;
+    if (std::is_same_v<Index,int>)
+    {
+      rawM = cholmod_allocate_sparse(N,             // # rows
+                                     N,             // # cols
+                                     nonZeros,      // # of nonzeroes
+                                     1,             // indices are sorted ( 1 = true)
+                                     1,             // matrix is "packed" ( 1 = true)
+                                     -1,            // stype of matrix ( -1 = consider the lower part only )
+                                     CHOLMOD_REAL,  // xtype of matrix ( CHOLMOD_REAL = single array, no complex numbers)
+                                     &c_            // cholmod_common ptr
+                                    );
+    }
+    else
+    {
+      rawM = cholmod_l_allocate_sparse(N,             // # rows
+                                       N,             // # cols
+                                       nonZeros,      // # of nonzeroes
+                                       1,             // indices are sorted ( 1 = true)
+                                       1,             // matrix is "packed" ( 1 = true)
+                                       -1,            // stype of matrix ( -1 = consider the lower part only )
+                                       CHOLMOD_REAL,  // xtype of matrix ( CHOLMOD_REAL = single array, no complex numbers)
+                                       &c_            // cholmod_common ptr
+                                      );
+    }
+
+    auto M = std::unique_ptr<cholmod_sparse, decltype(deleter)>(rawM, deleter);
 
     // copy the data of BCRS matrix to Cholmod Sparse matrix
-    int* Ap = static_cast<int*>(M->p);
-    int* Ai = static_cast<int*>(M->i);
+    Index* Ap = static_cast<Index*>(M->p);
+    Index* Ai = static_cast<Index*>(M->i);
     double* Ax = static_cast<double*>(M->x);
 
 
@@ -316,10 +361,16 @@ public:
     });
 
     // Now analyse the pattern and optimal row order
-    L_ = cholmod_analyze(M.get(), &c_);
+    if (std::is_same_v<Index,int>)
+      L_ = cholmod_analyze(M.get(), &c_);
+    else
+      L_ = cholmod_l_analyze(M.get(), &c_);
 
     // Do the factorization (this may take some time)
-    cholmod_factorize(M.get(), L_, &c_);
+    if (std::is_same_v<Index,int>)
+      cholmod_factorize(M.get(), L_, &c_);
+    else
+      cholmod_l_factorize(M.get(), L_, &c_);
   }
 
   virtual SolverCategory::Category category() const
@@ -330,7 +381,7 @@ public:
   /** \brief return a reference to the CHOLMOD common object for advanced option settings
    *
    *  The CHOLMOD common object stores all parameters and options for the solver to run
-   *  and can be modified in several ways, see CHOLMOD Userguide for further information
+   *  and can be modified in several ways, see CHOLMOD Userguide for further information.
    */
   cholmod_common& cholmodCommonObject()
   {
@@ -363,7 +414,10 @@ private:
   auto make_cholmod_dense(cholmod_dense* x, cholmod_common* c)
   {
     const auto deleter = [c](auto* p) {
-      cholmod_free_dense(&p, c);
+      if (std::is_same_v<Index,int>)
+        cholmod_free_dense(&p, c);
+      else
+        cholmod_l_free_dense(&p, c);
     };
     return std::unique_ptr<cholmod_dense, decltype(deleter)>(x, deleter);
   }
