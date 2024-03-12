@@ -310,10 +310,10 @@ namespace Dune {
      *
      * ParameterTree Key | Meaning
      * ------------------|------------
-     * verbose           | The verbosity level. default=0
+     * verbosity         | The verbosity level. default=0
     */
     UMFPack(const Matrix& mat_, const ParameterTree& config)
-      : UMFPack(mat_, config.get<int>("verbose", 0))
+      : UMFPack(mat_, config.get<int>("verbosity", 0))
     {}
 
     /** @brief default constructor

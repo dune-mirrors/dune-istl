@@ -53,7 +53,7 @@ void printHelp(){
             << "-rhs"
             << "Filename of the MatrixMarket file of the right-hand side" << std::endl
             << std::setw(20) << std::left
-            << "-verbose"
+            << "-verbosity"
             << "Verbosity (default: 1)" << std::endl
             << std::setw(20) << std::left
             << "-random_rhs"
@@ -105,13 +105,13 @@ int main(int argc, char** argv){
        feraiseexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);// | FE_UNDERFLOW);
      #endif
 
-  int verbose = config.get("verbose", 1);
+  int verbosity = config.get("verbosity", 1);
   if(mpihelper.rank() > 0)
-    verbose = 0;
+    verbosity = 0;
   std::shared_ptr<Vec> rhs = std::make_shared<Vec>();
   std::shared_ptr<Mat> m = std::make_shared<Mat>();
 
-  if(verbose){
+  if(verbosity){
     std::cout << "Processes: " << mpihelper.size() << std::endl;
     std::cout << "Loading system... " << std::flush;
   }
@@ -129,18 +129,18 @@ int main(int argc, char** argv){
   std::shared_ptr<OP> op = std::make_shared<OP>(*m);
   std::shared_ptr<SP> sp = std::make_shared<SP>();
 #endif
-  if(verbose)
+  if(verbosity)
     std::cout << t.elapsed() << " s" << std::endl;
 
   if(config.get("redistribute", false) && mpihelper.size() > 1){
 #if HAVE_PARMETIS && HAVE_MPI
     Dune::Timer t;
-    if(verbose > 0)
+    if(verbosity > 0)
       std::cout << "Redistributing...  " << std::flush;
     redistribute(m, rhs, oocomm);
     op = std::make_shared<OP>(*m, *oocomm);
     sp = std::make_shared<SP>(*oocomm);
-    if(verbose > 0)
+    if(verbosity > 0)
       std::cout << t.elapsed() << " s" << std::endl;
 #else
       std::cerr << "ParMETIS is necessary to redistribute the matrix." << std::endl;
@@ -158,19 +158,19 @@ int main(int argc, char** argv){
 
   // one output is enough!
   if(mpihelper.rank()!=0)
-    config["solver.verbose"] = "0";
+    config["solver.verbosity"] = "0";
 
   std::unique_ptr<Vec> pRHS;
   bool check_residual = config.get("check_residual", true);
   if(check_residual)
     pRHS = std::make_unique<Vec>(*rhs);
 
-  solve(op, *rhs, x, config.sub("solver"),verbose);
+  solve(op, *rhs, x, config.sub("solver"), verbosity);
 
   if(check_residual){
     op->applyscaleadd(-1.0, x, *pRHS);
     auto defect = sp->norm(*pRHS);
-    if(verbose > 0)
+    if(verbosity > 0)
       std::cout << "Final defect: " << Dune::Simd::io(defect) << std::endl;
   }
 

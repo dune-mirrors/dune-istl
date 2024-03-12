@@ -19,20 +19,20 @@ void solve(const std::shared_ptr<OP>& op,
            typename OP::range_type& rhs,
            typename OP::domain_type& x,
            const Dune::ParameterTree& config,
-           int verbose = 1){
+           int verbosity = 1){
   Dune::Timer t;
-  if(verbose)
+  if(verbosity > 1)
     std::cout << "Initializing solver... " << std::flush;
   Dune::initSolverFactories<OP>();
   auto solver = Dune::getSolverFromFactory(op, config);
-  if(verbose){
+  if(verbosity > 1){
     std::cout << t.elapsed() << " s" << std::endl;
     std::cout << "Solving system..." << std::flush;
   }
   t.reset();
   Dune::InverseOperatorResult res;
   solver->apply(x,rhs,res);
-  if(verbose)
+  if(verbosity > 1)
     std::cout << t.elapsed() << " s" << std::endl;
 }
 
@@ -134,7 +134,7 @@ void redistribute(std::shared_ptr<Mat>& m,
   Dune::graphRepartition(MatrixGraph(*m), *oocomm,
                          oocomm->communicator().size(),
                          oocomm_redist,
-                         ri.getInterface(), config.get("verbose", 1)>1);
+                         ri.getInterface(), config.get("verbosity", 1)>1);
   ri.setSetup();
   oocomm_redist->remoteIndices().template rebuild<false>();
   redistributeMatrix(*m,*m_redist, *oocomm, *oocomm_redist, ri);

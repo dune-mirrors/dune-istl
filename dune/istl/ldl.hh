@@ -131,10 +131,10 @@ namespace Dune {
      *
      * ParameterTree Key | Meaning
      * ------------------|------------
-     * verbose           | The verbosity level. default=0
+     * verbosity         | The verbosity level. default=0
     */
     LDL(const Matrix& matrix, const ParameterTree& config)
-      : LDL(matrix, config.get<int>("verbose", 0))
+      : LDL(matrix, config.get<int>("verbosity", 0))
     {}
 
     /** @brief Default constructor. */

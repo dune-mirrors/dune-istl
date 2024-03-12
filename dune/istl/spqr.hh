@@ -127,10 +127,10 @@ namespace Dune {
      *
      * ParameterTree Key | Meaning
      * ------------------|------------
-     * verbose           | The verbosity level. default=0
+     * verbosity         | The verbosity level. default=0
     */
     SPQR(const Matrix& matrix, const ParameterTree& config)
-      : SPQR(matrix, config.get<int>("verbose", 0))
+      : SPQR(matrix, config.get<int>("verbosity", 0))
     {}
 
     /** @brief Default constructor. */
