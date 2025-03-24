@@ -16,26 +16,7 @@
 
 namespace Dune {
 
-
-  /**
-   * \brief Stores the nonzero entries for creating a sparse matrix
-   *
-   * This stores std::set-like container for the column index
-   * of each row. A sorted std::vector is used for this container
-   * up to a customizable maxVectorSize. If this size is exceeded,
-   * storage of the corresponding row is switched to std::set.
-   *
-   * The default value for maxVectorSize works well and ensures
-   * that the slow std::set fallback is only used for very
-   * dense rows.
-   *
-   * This class is thread safe in the sense that concurrent calls
-   * to all const methods and furthermore to add(row,col) with different
-   * rows in each thread are safe.
-   */
-  class MatrixIndexSet
-  {
-  public:
+  namespace Impl {
 
     /**
      * @class RowIndexSet
@@ -57,8 +38,11 @@ namespace Dune {
      * indices leads to a data race.
      */
     class RowIndexSet {
-    public:
       using Index = std::uint_least32_t;
+      struct Vector : std::vector<Index> {
+        size_type maxVectorSize_;
+      };
+    public:
       using size_type = Index;
 
       /**
@@ -80,8 +64,10 @@ namespace Dune {
        * @param maxVectorSize The maximum number of indices to store in a
        * vector before switching to set storage.
        */
-      RowIndexSet(size_type maxVectorSize = defaultMaxVectorSize) : maxVectorSize_{maxVectorSize}
-      {}
+      RowIndexSet(size_type maxVectorSize = defaultMaxVectorSize) : storage_{Vector()}
+      {
+        std::get<Vector>(storage_).maxVectorSize_ = maxVectorSize;
+      }
 
       /**
        * @brief Inserts a column index into the row index set.
@@ -100,10 +86,10 @@ namespace Dune {
           // If row is stored as vector only insert directly
           // if maxVectorSize_ is not reached. Otherwise switch
           // to set storage first.
-          [&](std::vector<Index>& sortedVector) {
+          [&](Vector& sortedVector) {
             auto it = std::lower_bound(sortedVector.cbegin(), sortedVector.cend(), col);
             if (it == sortedVector.cend() or (*it != col)) {
-              if (sortedVector.size() < maxVectorSize_) {
+              if (sortedVector.size() < sortedVector.maxVectorSize_) {
                 sortedVector.insert(it, col);
               } else {
                 std::set<size_type> set(sortedVector.cbegin(), sortedVector.cend());
@@ -137,7 +123,7 @@ namespace Dune {
        *
        * @return A constant reference to the storage variant containing the row indices.
        */
-      const std::variant<std::vector<Index>, std::set<Index>>& storage() const {
+      const auto& storage() const {
         return storage_;
       }
 
@@ -162,14 +148,44 @@ namespace Dune {
       }
 
     private:
-      std::variant<std::vector<Index>, std::set<Index>> storage_;
-      size_type maxVectorSize_;
+      std::variant<Vector, std::set<Index>> storage_;
     };
+  }
 
 
-    using size_type = typename RowIndexSet::Index;
+  /**
+   * \brief Stores the nonzero entries for creating a sparse matrix
+   *
+   * This stores std::set-like container for the column index
+   * of each row. A sorted std::vector is used for this container
+   * up to a customizable maxVectorSize. If this size is exceeded,
+   * storage of the corresponding row is switched to std::set.
+   *
+   * The default value for maxVectorSize works well and ensures
+   * that the slow std::set fallback is only used for very
+   * dense rows.
+   *
+   * This class is thread safe in the sense that concurrent calls
+   * to all const methods and furthermore to add(row,col) with different
+   * rows in each thread are safe.
+   */
+  class MatrixIndexSet
+  {
+  public:
+    using size_type = typename Impl::RowIndexSet::size_type;
 
-    static constexpr size_type defaultMaxVectorSize = RowIndexSet::defaultMaxVectorSize;
+    /**
+     * \brief Default value for maxVectorSize
+     *
+     * This was selected after benchmarking for the worst case
+     * of reverse insertion of column indices. In many applications
+     * this works well. There's no need to use a different value
+     * unless you have many dense rows with more than defaultMaxVectorSize
+     * nonzero entries. Even in this case defaultMaxVectorSize may work
+     * well and a finding a better value may require careful
+     * benchmarking.
+     */
+    static constexpr size_type defaultMaxVectorSize = Impl::RowIndexSet::defaultMaxVectorSize;
 
     /**
      * \brief Constructor with custom maxVectorSize
@@ -188,14 +204,14 @@ namespace Dune {
      */
     MatrixIndexSet(size_type rows, size_type cols, size_type maxVectorSize=defaultMaxVectorSize) : rows_(rows), cols_(cols), maxVectorSize_(maxVectorSize)
     {
-      indices_.resize(rows_, RowIndexSet{maxVectorSize_});
+      indices_.resize(rows_, Impl::RowIndexSet{maxVectorSize_});
     }
 
     /** \brief Reset the size of an index set */
     void resize(size_type rows, size_type cols) {
       rows_ = rows;
       cols_ = cols;
-      indices_.resize(rows_, RowIndexSet{maxVectorSize_});
+      indices_.resize(rows_, Impl::RowIndexSet{maxVectorSize_});
     }
 
     /**
@@ -232,12 +248,8 @@ namespace Dune {
      * of this range, the result is stored in a std::variant<...>
      * which has to be accessed using `std::visit`.
      */
-    [[deprecated("Use rowIndexSetInstead")]] const auto& columnIndices(size_type row) const {
+    const auto& columnIndices(size_type row) const {
       return indices_[row].storage();
-    }
-
-    const RowIndexSet& rowIndexSet(size_type row) const {
-      return indices_[row];
     }
 
     /** \brief Return the number of entries in a given row */
@@ -298,7 +310,7 @@ namespace Dune {
 
   private:
 
-    std::vector<RowIndexSet> indices_;
+    std::vector<Impl::RowIndexSet> indices_;
 
     size_type rows_, cols_;
     size_type maxVectorSize_;
