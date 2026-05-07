@@ -24,6 +24,8 @@ install(FILES
    ildl.hh
    ilu.hh
    ilusubdomainsolver.hh
+   indexedarrayview.hh
+   indexrange.hh
    io.hh
    istlexception.hh
    ldl.hh

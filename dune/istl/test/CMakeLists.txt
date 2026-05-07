@@ -211,6 +211,8 @@ dune_add_test(SOURCES iluildltest.cc)
 
 dune_add_test(SOURCES matrixfreesolverfactorytest.cc)
 
+dune_add_test(SOURCES indexedarrayviewtest.cc)
+
 dune_add_test(SOURCES blocklevel.cc COMPILE_ONLY)
 
 dune_add_test(SOURCES registermacrosbackwardcompatibilitytest.cc
