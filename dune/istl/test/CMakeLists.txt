@@ -213,6 +213,9 @@ dune_add_test(SOURCES matrixfreesolverfactorytest.cc)
 
 dune_add_test(SOURCES indexedarrayviewtest.cc)
 
+dune_add_test(SOURCES vectorviewtest.cc
+              COMPILE_DEFINITIONS DUNE_ISTL_WITH_CHECKING=1)
+
 dune_add_test(SOURCES blocklevel.cc COMPILE_ONLY)
 
 dune_add_test(SOURCES registermacrosbackwardcompatibilitytest.cc
