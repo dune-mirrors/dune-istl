@@ -214,6 +214,8 @@ dune_add_test(SOURCES iluildltest.cc)
 
 dune_add_test(SOURCES matrixfreesolverfactorytest.cc)
 
+dune_add_test(SOURCES sparseindexrangestest.cc)
+
 dune_add_test(SOURCES indexedarrayviewtest.cc)
 
 dune_add_test(SOURCES vectorviewtest.cc
