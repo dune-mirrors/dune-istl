@@ -33,6 +33,7 @@ install(FILES
    matrixindexset.hh
    matrixmarket.hh
    matrixmatrix.hh
+   matrixview.hh
    matrixredistribute.hh
    matrixutils.hh
    multitypeblockmatrix.hh

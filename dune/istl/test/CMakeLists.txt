@@ -54,6 +54,9 @@ dune_add_test(SOURCES bcrsimplicitbuild.cc
 
 dune_add_test(SOURCES matrixiteratortest.cc)
 
+dune_add_test(SOURCES matrixviewtest.cc
+              COMPILE_DEFINITIONS DUNE_ISTL_WITH_CHECKING=1)
+
 dune_add_test(SOURCES mmtest.cc)
 
 dune_add_test(SOURCES multitypeblockmatrixtest.cc)
