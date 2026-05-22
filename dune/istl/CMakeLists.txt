@@ -21,6 +21,7 @@ install(FILES
    dilu.hh
    foreach.hh
    gsetc.hh
+   ibcrsmatrix.hh
    ildl.hh
    ilu.hh
    ilusubdomainsolver.hh

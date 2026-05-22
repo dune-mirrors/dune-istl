@@ -218,6 +218,8 @@ dune_add_test(SOURCES sparseindexrangestest.cc)
 
 dune_add_test(SOURCES imatrixtest.cc)
 
+dune_add_test(SOURCES ibcrsmatrixtest.cc)
+
 dune_add_test(SOURCES indexedarrayviewtest.cc)
 
 dune_add_test(SOURCES vectorviewtest.cc
