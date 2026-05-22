@@ -1,5 +1,5 @@
-// SPDX-FileCopyrightText: Copyright © DUNE Project contributors, see file LICENSE.md in module root SPDX-License-Identifier:
-// LicenseRef-GPL-2.0-only-with-DUNE-exception
+// SPDX-FileCopyrightText: Copyright © DUNE Project contributors, see file LICENSE.md in module root
+// SPDX-License-Identifier: LicenseRef-GPL-2.0-only-with-DUNE-exception
 // -*- tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 2 -*-
 // vi: set et ts=4 sw=2 sts=2:
 
@@ -23,7 +23,7 @@ namespace Dune {
  * \brief Block compressed row storage matrix.
  *
  * IBCRSMatrix is an sparse matrix inheriting from the IMatrix class
- * explicitely instantiated with SparseIndexRanges as the pattern type.
+ * explicitly instantiated with SparseIndexRanges as the pattern type.
  * It is designed to be a modernized, allocator-aware replacement for BCRSMatrix
  * that preserves the familiar matrix interface and build workflow while improving
  * performance and control over construction and ownership.

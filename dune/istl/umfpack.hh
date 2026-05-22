@@ -17,6 +17,7 @@
 #include<dune/common/fvector.hh>
 #include<dune/istl/bccsmatrixinitializer.hh>
 #include<dune/istl/bcrsmatrix.hh>
+#include<dune/istl/ibcrsmatrix.hh>
 #include<dune/istl/matrix.hh>
 #include<dune/istl/foreach.hh>
 #include<dune/istl/multitypeblockmatrix.hh>
@@ -211,6 +212,12 @@ namespace Dune {
       /** @brief The type of the range of the solver */
       using range_type  = BlockVector<UMFPackRangeType<T>, typename std::allocator_traits<A>::template rebind_alloc<UMFPackRangeType<T>>>;
     };
+
+    template<typename T, typename P, typename A>
+    struct UMFPackVectorChooser<IBCRSMatrix<T,P,A>,
+      std::void_t<UMFPackDomainType<T>, UMFPackRangeType<T>>>
+    : public UMFPackVectorChooser<BCRSMatrix<T,A>, std::void_t<UMFPackDomainType<T>, UMFPackRangeType<T>>>
+    {};
 
     template<typename T, typename A>
     struct UMFPackVectorChooser<Matrix<T,A>,
@@ -824,6 +831,12 @@ namespace Dune {
 
   template<typename T, typename A>
   struct StoresColumnCompressed<UMFPack<BCRSMatrix<T,A> > >
+  {
+    enum { value = true };
+  };
+
+  template<typename B, typename P, typename A>
+  struct StoresColumnCompressed<UMFPack<IBCRSMatrix<B,P,A> > >
   {
     enum { value = true };
   };

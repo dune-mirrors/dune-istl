@@ -23,6 +23,9 @@ namespace Dune
   template<typename B, typename A>
   class BCRSMatrix;
 
+  template<typename B, typename I, typename A>
+  class IBCRSMatrix;
+
   template<typename K, int n, int m>
   class FieldMatrix;
 
@@ -533,5 +536,15 @@ namespace Dune
     };
   };
 
+  template<typename T, typename P, typename A>
+  struct IsMatrix<IBCRSMatrix<T,P,A> >
+  {
+    enum {
+      /**
+       * @brief True if T is an ISTL matrix
+       */
+      value = true
+    };
+  };
 }
 #endif

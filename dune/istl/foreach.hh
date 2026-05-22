@@ -12,6 +12,8 @@
 #include<dune/common/indices.hh>
 
 #include<dune/istl/bcrsmatrix.hh>
+#include<dune/istl/ibcrsmatrix.hh>
+#include<dune/istl/imatrix.hh>
 #include<dune/istl/scaledidmatrix.hh>
 
 namespace Dune{
@@ -34,6 +36,12 @@ namespace Dune{
   // This is supported by the following matrix types:
   template <class B, class A>
   struct IsRowMajorSparse<BCRSMatrix<B,A>> : std::true_type {};
+
+  template <class B, class P, class A>
+  struct IsRowMajorSparse<IBCRSMatrix<B,P,A>> : std::true_type {};
+
+  template <class B, class P>
+  struct IsRowMajorSparse<IMatrix<B,P>> : std::true_type {};
 
   template <class K, int n>
   struct IsRowMajorSparse<DiagonalMatrix<K,n>> : std::true_type {};
