@@ -24,6 +24,7 @@ install(FILES
    ildl.hh
    ilu.hh
    ilusubdomainsolver.hh
+   imatrix.hh
    indexedarrayview.hh
    indexrange.hh
    io.hh
