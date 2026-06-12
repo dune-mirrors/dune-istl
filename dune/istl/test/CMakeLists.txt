@@ -26,6 +26,9 @@ dune_add_test(SOURCES dilutest.cc)
 
 dune_add_test(SOURCES dotproducttest.cc)
 
+dune_add_test(SOURCES bvectordotperformancetest.cc)
+add_dune_mpi_flags(bvectordotperformancetest)
+
 dune_add_test(SOURCES complexmatrixtest.cc)
 
 dune_add_test(SOURCES fieldvectortest.cc)

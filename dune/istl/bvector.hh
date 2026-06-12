@@ -12,8 +12,11 @@
 #include <initializer_list>
 #include <limits>
 #include <memory>
+#include <numeric>
+#include <type_traits>
 #include <utility>
 #include <vector>
+#include <span>
 
 #include <dune/common/dotproduct.hh>
 #include <dune/common/ftraits.hh>
@@ -198,16 +201,13 @@ namespace Imp {
     template<class OtherB, class OtherST>
     auto dot(const block_vector_unmanaged<OtherB,OtherST>& y) const
     {
-      typedef typename PromotionTraits<field_type,typename BlockTraits<OtherB>::field_type>::PromotedType PromotedType;
-      PromotedType sum(0);
 #ifdef DUNE_ISTL_WITH_CHECKING
       if (this->n!=y.N()) DUNE_THROW(ISTLError,"vector size mismatch");
 #endif
-
-      for (size_type i=0; i<this->n; ++i)
-        sum += Impl::asVector((*this)[i]).dot(Impl::asVector(y[i]));
-
-      return sum;
+      if (N()<= 64)
+        return dotImpl(*this, y, PriorityTag<0>{});
+      else
+        return dotImpl(*this, y, PriorityTag<42>{});
     }
 
     //===== norms
@@ -337,6 +337,79 @@ namespace Imp {
     //! make constructor protected, so only derived classes can be instantiated
     block_vector_unmanaged () : base_array_unmanaged<B,ST>()
     {       }
+
+  private:
+    using real_type = typename FieldTraits<field_type>::real_type;
+
+    //! generic dot implementation
+    template<class X, class Y>
+    static auto dotImpl(const X& x, const Y& y, PriorityTag<0>) {
+      typedef typename PromotionTraits<typename X::field_type,typename Y::field_type>::PromotedType PromotedType;
+      PromotedType sum(0);
+
+      for (size_type i=0; i<x.N(); ++i)
+        sum += PromotedType(Impl::asVector(x[i]).dot(Impl::asVector(y[i])));
+
+      return sum;
+    }
+
+    //!
+    template<typename OtherST, int n>
+    static auto dotImpl(const block_vector_unmanaged<FieldVector<real_type, n>,ST>& x, const block_vector_unmanaged<FieldVector<real_type, n>,OtherST>& y, PriorityTag<42>) {
+      std::span<const real_type> xspan(x.data()->data(), n*x.N());
+      std::span<const real_type> yspan(y.data()->data(), n*y.N());
+      return transformReduce(xspan, yspan, real_type(0), std::plus<>(), std::multiplies<>());
+    }
+
+    template <typename T, typename I, typename ReduceOp, typename TransformOp>
+    static field_type transformReduce(std::span<const T> x, std::span<const T> y, I init, ReduceOp reduce, TransformOp transform) {
+#if __cpp_lib_hardware_interference_size >= 201703L
+      constexpr std::size_t lane_size      = std::hardware_constructive_interference_size;
+#else
+      constexpr std::size_t lane_size      = alignof(std::max_align_t);
+#endif
+      constexpr std::size_t block_size     = lane_size / sizeof(real_type);
+
+      void* ptr = (void*)x.data();
+      std::size_t space = sizeof(real_type) * x.size();
+      if(std::align(lane_size, sizeof(real_type), ptr, space)) {
+
+        // storage of reductions for each lane
+        alignas(lane_size) real_type agg[block_size];
+        std::fill(agg, agg + block_size, init);
+
+        // offset to the first aligned element in x
+        std::size_t u = std::distance(x.data(), (real_type const *)ptr);
+
+        // unaligned beginning
+        for(std::size_t i=0; i!=u; ++i)
+          agg[i] = reduce(agg[i], transform(x[i], y[i]));
+
+        // unroll aligned loop in multiples of block_size
+        std::size_t an = space / sizeof(real_type); // number of elements after first aligned element
+        std::size_t n=an/block_size; // number of full blocks after first aligned element
+        std::size_t b=block_size*n; // number of elements in full blocks after first aligned element
+
+        // main loop
+        for(std::size_t i=0; i!=b; i += block_size)
+            for(std::size_t j=0; j!=block_size; ++j)
+              agg[j]=reduce(agg[j], transform(x[u+i+j], y[u+i+j]));
+
+        // trailing end starts after the unaligned prefix and full aligned blocks
+        for(std::size_t i=u+b, j=0; i!=x.size(); ++i, ++j)
+          agg[j] = reduce(agg[j], transform(x[i], y[i]));
+
+        // reduction
+        for (std::size_t r=block_size; r!=1; r/=2)
+          for(std::size_t j=0; j!=r/2; ++j)
+            agg[j] = reduce(agg[j], agg[j+r/2]);
+
+        return agg[0];
+      } else {
+          // fallback to non-vectorized version if we cannot align the data
+          return std::transform_reduce(x.begin(), x.end(), y.begin(), init, reduce, transform);
+      }
+    }
   };
 
   //! simple scope guard, execute the provided functor on scope exit
