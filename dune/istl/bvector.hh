@@ -240,10 +240,7 @@ namespace Imp {
     //! Square of the two-norm (the sum over the squared values of the entries)
     typename FieldTraits<field_type>::real_type two_norm2 () const
     {
-      typename FieldTraits<field_type>::real_type sum=0;
-      for (size_type i=0; i<this->n; ++i)
-        sum += Impl::asVector((*this)[i]).two_norm2();
-      return sum;
+      return two_norm2Impl(*this, PriorityTag<42>{});
     }
 
     //! infinity norm (maximum of absolute values of entries)
@@ -340,6 +337,20 @@ namespace Imp {
 
   private:
     using real_type = typename FieldTraits<field_type>::real_type;
+
+    //! generic dot implementation
+    template<class X>
+    static auto two_norm2Impl(const X& x, PriorityTag<0>) {
+      typename FieldTraits<field_type>::real_type sum=0;
+      for (size_type i=0; i<x.N(); ++i)
+        sum += Impl::asVector(x[i]).two_norm2();
+      return sum;
+    }
+
+    template<int n>
+    static auto two_norm2Impl(const block_vector_unmanaged<FieldVector<real_type, n>,ST>& x, PriorityTag<42>) {
+      return dotImpl(x, x, PriorityTag<42>{});
+    }
 
     //! generic dot implementation
     template<class X, class Y>

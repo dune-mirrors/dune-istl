@@ -20,6 +20,9 @@ dune_add_test(SOURCES bcrsmatrixtest.cc)
 
 dune_add_test(SOURCES bcrsnormtest.cc)
 
+dune_add_test(SOURCES bvectortwonormperformancetest.cc)
+add_dune_mpi_flags(bvectortwonormperformancetest)
+
 dune_add_test(SOURCES cgconditiontest.cc)
 
 dune_add_test(SOURCES dilutest.cc)
