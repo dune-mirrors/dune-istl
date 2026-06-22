@@ -33,6 +33,7 @@
 #include "istlexception.hh"
 #include <dune/common/parallel/communication.hh>
 #include <dune/istl/matrixmarket.hh>
+#include <dune/istl/bvector.hh>
 
 template<int dim, template<class,class> class Comm>
 void testRedistributed(int s);
@@ -397,20 +398,15 @@ namespace Dune {
     template<class T1, class T2>
     void dot (const T1& x, const T1& y, T2& result) const
     {
-      using real_type = typename FieldTraits<typename T1::field_type>::real_type;
       using size_type = typename std::vector<bool>::size_type;
       // set up mask vector
       if (mask.size()!=static_cast<size_type>(x.size()))
-      {
-        mask.assign(x.size(), true);
-        for (typename PIS::const_iterator i=pis.begin(); i!=pis.end(); ++i)
-          if (i->local().attribute()!=OwnerOverlapCopyAttributeSet::owner)
-            mask[i->local().local()] = false;
-      }
+        buildDotProductMask(x.size());
+
       result = T2(0.0);
 
-      for (typename T1::size_type i=0; i<x.size(); i++)
-        result += (x[i]*(y[i]))*static_cast<real_type>(bool(mask[i]));
+      result = dotImpl(x,y,PriorityTag<42>());
+
       result = cc.sum(result);
     }
 
@@ -427,17 +423,15 @@ namespace Dune {
       using size_type = typename std::vector<bool>::size_type;
       // set up mask vector
       if (mask.size()!=static_cast<size_type>(x.size()))
-      {
-        mask.assign(x.size(), true);
-        for (typename PIS::const_iterator i=pis.begin(); i!=pis.end(); ++i)
-          if (i->local().attribute()!=OwnerOverlapCopyAttributeSet::owner)
-            mask[i->local().local()] = false;
-      }
+        buildDotProductMask(x.size());
+
       auto result = real_type(0.0);
-      for (typename T1::size_type i=0; i<x.size(); i++)
-        result += Impl::asVector(x[i]).two_norm2()*static_cast<real_type>(bool(mask[i]));
+
+      result = dotImpl(x,x,PriorityTag<42>());
+
       using std::sqrt;
-      return sqrt(cc.sum(result));
+      auto r = sqrt(cc.sum(result));
+      return r;
     }
 
     typedef Dune::EnumItem<AttributeSet,OwnerOverlapCopyAttributeSet::copy> CopyFlags;
@@ -623,7 +617,7 @@ namespace Dune {
           }
 
           // position to correct entry in parallel index set
-          while (pi->global()!=std::get<1>(*i) && pi!=pis.end())
+          while (pi!=pis.end() && pi->global()!=std::get<1>(*i))
             ++pi;
           if (pi==pis.end())
             DUNE_THROW(ISTLError,"OwnerOverlapCopyCommunication: global index not in index set");
@@ -669,6 +663,118 @@ namespace Dune {
   private:
     OwnerOverlapCopyCommunication (const OwnerOverlapCopyCommunication&)
     {}
+
+    void buildDotProductMask(std::size_t size) const
+    {
+      maskSplit = std::numeric_limits<std::size_t>::max();
+      mask.assign(size, true);
+      for (typename PIS::const_iterator i=pis.begin(); i!=pis.end(); ++i)
+        if (i->local().attribute()!=OwnerOverlapCopyAttributeSet::owner)
+          mask[i->local().local()] = false;
+      auto it = std::find(mask.begin(), mask.end(), false);
+      if (std::none_of(it, mask.end(), [](bool b){ return b; }))
+        maskSplit = std::distance(mask.begin(), it);
+
+      // // Serialize and output mask data using MPI
+      // // Each rank reports sequentially to avoid output overlap
+      // int rank = cc.rank();
+      // int numRanks = cc.size();
+
+      // for (int r = 0; r < numRanks; ++r) {
+      //   cc.barrier();
+      //   if (rank == r) {
+      //     std::cout << rank << " mask " << size << " maskSplit " << maskSplit << std::endl;
+      //     for (size_t i = 0; i < size; i++)
+      //       std::cout << mask[i];
+      //     std::cout << std::endl;
+      //   }
+      // }
+    }
+
+    //! generic dot implementation
+    template<class X, class Y>
+    auto dotImpl(const X& x, const Y& y, PriorityTag<0>) const {
+      using PromotedFieldType = typename PromotionTraits<typename X::field_type,typename Y::field_type>::PromotedType;
+      using PromotedRealType = typename FieldTraits<PromotedFieldType>::real_type;
+      PromotedFieldType sum(0);
+
+      if (maskSplit!=std::numeric_limits<std::size_t>::max())
+        for (std::size_t i=0; i<maskSplit; i++)
+          sum += PromotedFieldType(Impl::asVector(x[i]).dot(Impl::asVector(y[i])));
+      else
+        for (typename X::size_type i=0; i<x.size(); i++)
+          sum += x[i]*y[i]*static_cast<PromotedRealType>(bool(mask[i]));
+
+      return sum;
+    }
+
+    template<Dune::Concept::Number T, typename ST, typename OtherST, int n>
+    auto dotImpl(const BlockVector<FieldVector<T, n>,ST>& x, const BlockVector<FieldVector<T, n>,OtherST>& y, PriorityTag<42>) const {
+      using real_type = typename FieldTraits<T>::real_type;
+      if (maskSplit!=std::numeric_limits<std::size_t>::max()) {
+        std::span<const T> xspan(x.data()->data(), n*maskSplit);
+        std::span<const T> yspan(y.data()->data(), n*maskSplit);
+        return transformReduce(xspan, yspan, T(0), std::plus<>(), std::multiplies<>());
+      } else {
+        return dotImpl(x,y,PriorityTag<0>());
+        // std::span<const T> xspan(x.data()->data(), n*x.size());
+        // std::span<const T> yspan(y.data()->data(), n*y.size());
+        // return transformReduce(xspan, yspan, T(0), std::plus<>(), [&, this](const T& a, const T& b) {
+        //   return a * b * static_cast<real_type>(bool(mask[(std::addressof(a) - xspan.data()) / n]));
+        // });
+      }
+    }
+
+    template <typename T, typename I, typename ReduceOp, typename TransformOp>
+    static auto transformReduce(std::span<const T> x, std::span<const T> y, I init, ReduceOp reduce, TransformOp transform) {
+#if __cpp_lib_hardware_interference_size >= 201703L
+      constexpr std::size_t lane_size      = std::hardware_constructive_interference_size;
+#else
+      constexpr std::size_t lane_size      = alignof(std::max_align_t);
+#endif
+      constexpr std::size_t block_size     = lane_size / sizeof(T);
+
+      void* ptr = (void*)x.data();
+      std::size_t space = sizeof(T) * x.size();
+      if(std::align(lane_size, sizeof(T), ptr, space)) {
+
+        // storage of reductions for each lane
+        alignas(lane_size) T agg[block_size];
+        std::fill(agg, agg + block_size, init);
+
+        // offset to the first aligned element in x
+        std::size_t u = std::distance(x.data(), (T const *)ptr);
+
+        // unaligned beginning
+        for(std::size_t i=0; i!=u; ++i)
+          agg[i] = reduce(agg[i], transform(x[i], y[i]));
+
+        // unroll aligned loop in multiples of block_size
+        std::size_t an = space / sizeof(T); // number of elements after first aligned element
+        std::size_t n=an/block_size; // number of full blocks after first aligned element
+        std::size_t b=block_size*n; // number of elements in full blocks after first aligned element
+
+        // main loop
+        for(std::size_t i=0; i!=b; i += block_size)
+            for(std::size_t j=0; j!=block_size; ++j)
+              agg[j]=reduce(agg[j], transform(x[u+i+j], y[u+i+j]));
+
+        // trailing end starts after the unaligned prefix and full aligned blocks
+        for(std::size_t i=u+b, j=0; i!=x.size(); ++i, ++j)
+          agg[j] = reduce(agg[j], transform(x[i], y[i]));
+
+        // reduction
+        for (std::size_t r=block_size; r!=1; r/=2)
+          for(std::size_t j=0; j!=r/2; ++j)
+            agg[j] = reduce(agg[j], agg[j+r/2]);
+
+        return agg[0];
+      } else {
+          // fallback to non-vectorized version if we cannot align the data
+          return std::transform_reduce(x.begin(), x.end(), y.begin(), init, reduce, transform);
+      }
+    }
+
     MPI_Comm comm;
     Communication<MPI_Comm> cc;
     PIS pis;
@@ -684,6 +790,7 @@ namespace Dune {
     mutable IF CopyToAllInterface;
     mutable bool CopyToAllInterfaceBuilt;
     mutable std::vector<bool> mask;
+    mutable std::size_t maskSplit;
     int oldseqNo;
     GlobalLookupIndexSet* globalLookup_;
     const SolverCategory::Category category_;
