@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <dune/common/exceptions.hh>
+#include <dune/common/simd/simd.hh>
 #include <dune/common/typetraits.hh>
 #include <dune/istl/paamg/smoother.hh>
 #include <dune/istl/paamg/transfer.hh>
@@ -518,7 +519,7 @@ namespace Dune
       // Init all iterators for the current level
       initIteratorsWithFineLevel(levelContext);
 
-      assert(v.two_norm()==0);
+      assert(Dune::Simd::allTrue(v.two_norm()==0));
 
       level=0;
       if(matrices_->maxlevels()==1){
