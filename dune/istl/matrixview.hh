@@ -191,20 +191,22 @@ namespace Dune
      * \brief Test whether position \f$(i,j)\f$ is present in the sparsity pattern.
      *
      * This checks structural existence only. It does not inspect value magnitude.
+     * \throw BCRSMatrixError if \f$i\f$ or \f$j\f$ is out of range if DUNE_ISTL_WITH_CHECKING is defined.
      */
-    bool exists(size_type i, size_type j) const;
+    [[nodiscard]] bool exists (size_type i, size_type j) const DUNE_ISTL_WITH_CHECKING_NOEXCEPT
+    {
+#ifdef DUNE_ISTL_WITH_CHECKING
+      if (i<0 || i>=N()) DUNE_THROW(BCRSMatrixError,"row index out of range");
+      if (j<0 || j>=M()) DUNE_THROW(BCRSMatrixError,"column index out of range");
+#endif
+      return this->operator[](i).contains(j);
+    }
 
     /** \brief Number of block rows. */
-    size_type N() const;
+    size_type N() const { return pattern_ptr_ ? pattern().size() : 0; }
 
     /** \brief Number of block columns. */
-    size_type M() const;
-
-    /** \brief True if both dimensions are zero. */
-    bool empty() const
-    {
-      return (N() == 0 && M() == 0);
-    }
+    size_type M() const { return pattern_ptr_ ? pattern().range().size() : 0; }
 
     /**
      * \brief Number of stored block entries.
@@ -212,7 +214,7 @@ namespace Dune
      * This is the number of structurally present entries, i.e., entries that may
      * be nonzero.
      */
-    size_type nonzeroes() const;
+    size_type nonzeroes() const { return pattern_ptr_ ? pattern().count() : 0; }
 
     //===== vector space arithmetic
 
@@ -255,10 +257,10 @@ namespace Dune
 
   protected:
 
-    //! Reset the view to point to \p data_iter and \p pattern_ptr.
-    void resetView(block_iter_type data_iter, pattern_type const* pattern_ptr)
+    //! Reset the view to point to \p block_iter and \p pattern_ptr.
+    void resetView(block_iter_type block_iter, pattern_type const* pattern_ptr)
     {
-      block_iter_ = data_iter;
+      block_iter_ = block_iter;
       pattern_ptr_ = pattern_ptr;
     }
 
