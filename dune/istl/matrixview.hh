@@ -468,18 +468,18 @@ namespace Dune
   template <std::random_access_iterator B, class I>
   MatrixView<B, I> &MatrixView<B, I>::operator*=(const field_type &k)
   {
-    std::for_each_n(blockIter(), pattern().count(), [&k](block_type &b){
-      b *= k;
-    });
+    // element-wise scaling of blocks
+    for (size_type i = 0; i != pattern().count(); ++i)
+      blockIter()[i] *= k;
     return *this;
   }
 
   template <std::random_access_iterator B, class I>
   MatrixView<B, I> &MatrixView<B, I>::operator/=(const field_type &k)
   {
-    std::for_each_n(blockIter(), pattern().count(), [&k](block_type &b){
-      b /= k;
-    });
+    // element-wise scaling of blocks
+    for (size_type i = 0; i != pattern().count(); ++i)
+      blockIter()[i] /= k;
     return *this;
   }
 
@@ -489,12 +489,14 @@ namespace Dune
   {
     if (pattern_ptr_ == b.pattern_ptr_)
     {
-      for (size_type i = 0; i < pattern().count(); ++i)
+      // element-wise addition of blocks
+      for (size_type i = 0; i != pattern().count(); ++i)
         blockIter()[i] += b.blockIter()[i];
     }
     else if (pattern().size() == b.pattern().size() && pattern().range().size() == b.pattern().range().size())
     {
-      for (size_type i = 0; i < pattern().size(); ++i)
+      // row-wise addition of blocks
+      for (size_type i = 0; i != pattern().size(); ++i)
         this->operator[](i) += b.operator[](i);
     }
     else
@@ -510,12 +512,14 @@ namespace Dune
   {
     if (pattern_ptr_ == b.pattern_ptr_)
     {
-      for (size_type i = 0; i < pattern().count(); ++i)
+      // element-wise subtraction of blocks
+      for (size_type i = 0; i != pattern().count(); ++i)
         blockIter()[i] -= b.blockIter()[i];
     }
     else if (pattern().size() == b.pattern().size() && pattern().range().size() == b.pattern().range().size())
     {
-      for (size_type i = 0; i < pattern().size(); ++i)
+      // row-wise subtraction of blocks
+      for (size_type i = 0; i != pattern().size(); ++i)
         this->operator[](i) -= b.operator[](i);
     }
     else
@@ -528,9 +532,8 @@ namespace Dune
   template <std::random_access_iterator B, class I>
   MatrixView<B, I> &MatrixView<B, I>::operator=(const field_type &f)
   {
-    std::for_each_n(blockIter(), pattern().count(), [&f](block_type &block){
-      block = f;
-    });
+    for (size_type i = 0; i != pattern().count(); ++i)
+      blockIter()[i] = f;
     return *this;
   }
 
@@ -540,12 +543,14 @@ namespace Dune
   {
     if (pattern_ptr_ == b.pattern_ptr_)
     {
-      for (size_type i = 0; i < pattern().count(); ++i)
+      // element-wise axpy addition of blocks
+      for (size_type i = 0; i != pattern().count(); ++i)
         Impl::asMatrix(blockIter()[i]).axpy(alpha, Impl::asMatrix(b.blockIter()[i]));
     }
     else if (pattern().size() == b.pattern().size() && pattern().range().size() == b.pattern().range().size())
     {
-      for (size_type i = 0; i < pattern().size(); ++i)
+      // row-wise axpy addition of blocks
+      for (size_type i = 0; i != pattern().size(); ++i)
         this->operator[](i).axpy(alpha, b.operator[](i));
     }
     else
