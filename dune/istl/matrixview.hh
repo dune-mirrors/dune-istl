@@ -31,9 +31,11 @@ namespace Dune
    * - a random-access iterator to block values,
    * - a pattern that defines row offsets and column indices.
    *
-   * The blocks are expected to bestored contiguously in row-major order consistent
-   * with \c pattern_type offsets: entries of row \f$i\f$ start at
-   * \f$\text{offset}(i)\f$ and follow the column indices in \c pattern()[i].
+   * The block iterator is expected to point to at least \c pattern().count()
+   * blocks, which are interpreted in row-major order consistent with
+   * index ranges of \c pattern_type. That is, entries of row \f$i\f$ start at
+   * an offset given by \c pattern().offset(i) and follow the column indices
+   * in \c pattern()[i].
    *
    * The view does not own memory. The caller must ensure that both the data
    * range and the pattern outlive the view. The pattern is treated as
