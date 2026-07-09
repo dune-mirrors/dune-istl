@@ -135,30 +135,43 @@ namespace Dune
 
   private:
 
+    // matrix view getters/setters
+    using MatrixView<B*, P>::blockIter;
+    using MatrixView<B*, P>::patternPtr;
+    using MatrixView<B*, P>::resetView;
+
+    // matrix view types
+    using typename MatrixView<B*, P>::block_iter_type;
+    using typename MatrixView<B*, P>::block_const_iter_type;
+
     // Release owned block storage if it exists; pattern ownership is handled separately.
     void resetData();
 
+    //! Construct a block at \p ptr using the allocator \p block_alloc and the allocator \p alloc.
     template<class BlockAlloc, class Alloc, class... Args>
-    static void constructBlock(BlockAlloc& block_alloc, block_type* ptr, const Alloc& alloc, Args&&... args);
+    static void constructBlock(BlockAlloc& block_alloc, block_iter_type ptr, const Alloc& alloc, Args&&... args);
 
+    //! Allocate block storage for \p count blocks using the allocator \p alloc and the construction function \p construct_fn.
     template<class Alloc, class ConstructFn>
-    block_type* allocateData(const Alloc& alloc, size_type count, ConstructFn&& construct_fn);
+    block_iter_type allocateData(const Alloc& alloc, size_type count, ConstructFn&& construct_fn);
 
+    //! Allocate block storage for \p count blocks using the allocator \p alloc and the construction function \p construct_fn.
+    //! If construction fails, the \p restore_fn is called for each constructed block to restore the source before deallocation.
     template<class Alloc, class ConstructFn, class RestoreFn>
-    block_type* allocateData(const Alloc& alloc, size_type count, ConstructFn&& construct_fn, RestoreFn&& restore_fn);
+    block_iter_type allocateData(const Alloc& alloc, size_type count, ConstructFn&& construct_fn, RestoreFn&& restore_fn);
 
+    //! Allocate block storage for the current pattern and value-initialize all blocks.
     void allocateDataDefault();
 
-    void allocateDataCopy(const B* other_data);
+    //! Allocate block storage for the current pattern and copy-construct all blocks from \p other_data.
+    void allocateDataCopy(block_const_iter_type other_data);
 
-    void allocateDataMove(B* other_data);
+    //! Allocate block storage for the current pattern and move-construct all blocks from \p other_data.
+    void allocateDataMove(block_iter_type other_data);
 
+    //! Deallocate block storage if it exists.
     void deallocateData();
 
-    // pointer to data, owned by this class
-    using MatrixView<B*, P>::data_view_;
-    // view to index sets: invariant pattern_view_ == pattern_.get()
-    using MatrixView<B*, P>::pattern_view_;
     // storage of index sets, shared ownership with this class
     std::shared_ptr<const pattern_type> pattern_;
 
@@ -198,13 +211,13 @@ namespace Dune
   template <class B, class P, class A>
   void IMatrix<B, P, A>::resetData()
   {
-    if (data_view_)
+    if (blockIter())
       deallocateData();
   }
 
   template <class B, class P, class A>
   template<class BlockAlloc, class Alloc, class... Args>
-  void IMatrix<B, P, A>::constructBlock(BlockAlloc& block_alloc, block_type* ptr, const Alloc& alloc, Args&&... args)
+  void IMatrix<B, P, A>::constructBlock(BlockAlloc& block_alloc, block_iter_type ptr, const Alloc& alloc, Args&&... args)
   {
     std::apply([&]<class... Xs>(Xs&&... xs) {
       block_alloc_traits::construct(block_alloc, ptr, std::forward<Xs>(xs)...);
@@ -213,19 +226,19 @@ namespace Dune
 
   template <class B, class P, class A>
   template<class Alloc, class ConstructFn>
-  auto IMatrix<B, P, A>::allocateData(const Alloc& alloc, size_type count, ConstructFn&& construct_fn) -> block_type*
+  auto IMatrix<B, P, A>::allocateData(const Alloc& alloc, size_type count, ConstructFn&& construct_fn) -> block_iter_type
   {
     return allocateData(alloc, count, std::forward<ConstructFn>(construct_fn), [](size_type, block_type&) {});
   }
 
   template <class B, class P, class A>
   template<class Alloc, class ConstructFn, class RestoreFn>
-  auto IMatrix<B, P, A>::allocateData(const Alloc& alloc, size_type count, ConstructFn&& construct_fn, RestoreFn&& restore_fn) -> block_type*
+  auto IMatrix<B, P, A>::allocateData(const Alloc& alloc, size_type count, ConstructFn&& construct_fn, RestoreFn&& restore_fn) -> block_iter_type
   {
     // Strong exception guarantee: either fully constructed storage is returned
     // or all partially constructed elements are rolled back and deallocated.
     block_alloc_type block_alloc(alloc);
-    block_type* data = block_alloc_traits::allocate(block_alloc, count);
+    block_iter_type data = block_alloc_traits::allocate(block_alloc, count);
     size_type constructed = 0;
     try {
       for (; constructed < count; ++constructed)
@@ -245,57 +258,60 @@ namespace Dune
   template <class B, class P, class A>
   void IMatrix<B, P, A>::allocateDataDefault()
   {
-    assert(not data_view_);
-    assert(pattern_view_);
-    assert(pattern_view_ == pattern_.get());
+    assert(not blockIter());
+    assert(patternPtr());
+    assert(patternPtr() == pattern_.get());
     const size_type count = pattern_->count();
-    data_view_ = allocateData(alloc_, count, [this](auto& block_alloc, block_type* ptr, size_type) {
+    block_iter_type data_ptr = allocateData(alloc_, count, [this](auto& block_alloc, block_iter_type ptr, size_type) {
       constructBlock(block_alloc, ptr, alloc_);
     });
+    resetView(data_ptr, pattern_.get());
   }
 
   template <class B, class P, class A>
-  void IMatrix<B, P, A>::allocateDataCopy(const B* other_data)
+  void IMatrix<B, P, A>::allocateDataCopy(block_const_iter_type other_data)
   {
-    assert(not data_view_);
-    assert(pattern_view_);
-    assert(pattern_view_ == pattern_.get());
+    assert(not blockIter());
+    assert(patternPtr());
+    assert(patternPtr() == pattern_.get());
     const size_type count = pattern_->count();
-    data_view_ = allocateData(alloc_, count, [this, other_data](auto& block_alloc, block_type* ptr, size_type i) {
+    block_iter_type data_ptr = allocateData(alloc_, count, [this, other_data](auto& block_alloc, block_iter_type ptr, size_type i) {
       constructBlock(block_alloc, ptr, alloc_, other_data[i]);
     });
+    resetView(data_ptr, pattern_.get());
   }
 
   template <class B, class P, class A>
-  void IMatrix<B, P, A>::allocateDataMove(B* other_data)
+  void IMatrix<B, P, A>::allocateDataMove(block_iter_type other_data)
   {
-    assert(not data_view_);
-    assert(pattern_view_);
-    assert(pattern_view_ == pattern_.get());
+    assert(not blockIter());
+    assert(patternPtr());
+    assert(patternPtr() == pattern_.get());
     const size_type count = pattern_->count();
-    data_view_ = allocateData(
+    block_iter_type data_ptr = allocateData(
       alloc_,
       count,
-      [this, other_data](auto& block_alloc, block_type* ptr, size_type i) {
+      [this, other_data](auto& block_alloc, block_iter_type ptr, size_type i) {
         constructBlock(block_alloc, ptr, alloc_, std::move(other_data[i]));
       },
       [other_data](size_type i, block_type& block) {
         other_data[i] = std::move(block);
       });
+    resetView(data_ptr, pattern_.get());
   }
 
   template <class B, class P, class A>
   void IMatrix<B, P, A>::deallocateData()
   {
-    assert(data_view_);
-    assert(pattern_view_);
-    assert(pattern_view_ == pattern_.get());
+    assert(blockIter());
+    assert(patternPtr());
+    assert(patternPtr() == pattern_.get());
     block_alloc_type block_alloc(alloc_);
     if constexpr (not std::is_trivially_destructible_v<block_type>)
-      for (auto& block : std::span(data_view_, pattern_view_->count()))
+      for (auto& block : std::span(blockIter(), pattern_->count()))
         block_alloc_traits::destroy(block_alloc, std::addressof(block));
-    block_alloc_traits::deallocate(block_alloc, data_view_, pattern_view_->count());
-    data_view_ = nullptr;
+    block_alloc_traits::deallocate(block_alloc, blockIter(), pattern_->count());
+    resetView(nullptr, pattern_.get());
   }
 
   template <class B, class P, class A>
@@ -310,7 +326,7 @@ namespace Dune
       , pattern_(std::move(pattern))
       , alloc_(allocator)
   {
-    if (pattern_view_)
+    if (patternPtr())
       allocateDataDefault();
   }
 
@@ -321,8 +337,8 @@ namespace Dune
     using pattern_alloc_type = typename std::allocator_traits<allocator_type>::template rebind_alloc<P>;
     pattern_alloc_type pattern_alloc(alloc_);
     pattern_ = std::allocate_shared<const pattern_type>(pattern_alloc, std::move(pattern));
-    pattern_view_ = pattern_.get();
-    if (pattern_view_)
+    resetView(nullptr, pattern_.get());
+    if (patternPtr())
       allocateDataDefault();
   }
 
@@ -330,7 +346,7 @@ namespace Dune
   IMatrix<B, P, A>::~IMatrix()
   {
     resetData();
-    pattern_view_ = nullptr;
+    resetView(nullptr, nullptr);
   }
 
   template <class B, class P, class A>
@@ -343,8 +359,8 @@ namespace Dune
     : IMatrix(other.pattern_, allocator)
   {
     resetData();
-    if (pattern_view_)
-      allocateDataCopy(other.data_view_);
+    if (patternPtr())
+      allocateDataCopy(other.blockIter());
   }
 
   template <class B, class P, class A>
@@ -363,8 +379,10 @@ namespace Dune
 
     using std::swap;
     swap(pattern_, other.pattern_);
-    swap(pattern_view_, other.pattern_view_);
-    swap(data_view_, other.data_view_);
+    pattern_type const * tmp_pattern_ptr = patternPtr();
+    block_iter_type tmp_data_iter = blockIter();
+    resetView(other.blockIter(), other.patternPtr());
+    other.resetView(tmp_data_iter, tmp_pattern_ptr);
     if constexpr (std::allocator_traits<allocator_type>::propagate_on_container_swap::value)
       swap(alloc_, other.alloc_);
   }
@@ -379,11 +397,11 @@ namespace Dune
 
       auto new_pattern = other.pattern_;
       auto* new_pattern_view = new_pattern.get();
-      B* new_data = nullptr;
+      block_iter_type new_block_ptr = nullptr;
 
       if (new_pattern_view)
-        new_data = allocateData(target_alloc, new_pattern_view->count(), [&](auto& block_alloc, block_type* ptr, size_type i) {
-          constructBlock(block_alloc, ptr, target_alloc, other.data_view_[i]);
+        new_block_ptr = allocateData(target_alloc, new_pattern_view->count(), [&](auto& block_alloc, block_iter_type ptr, size_type i) {
+          constructBlock(block_alloc, ptr, target_alloc, other.blockIter()[i]);
         });
 
       resetData();
@@ -392,8 +410,7 @@ namespace Dune
         alloc_ = other.alloc_;
 
       pattern_ = std::move(new_pattern);
-      pattern_view_ = new_pattern_view;
-      data_view_ = new_data;
+      resetView(new_block_ptr, new_pattern_view);
     }
     return *this;
   }
@@ -404,8 +421,8 @@ namespace Dune
   {
     alloc_ = std::move(other.alloc_);
     pattern_ = std::move(other.pattern_);
-    pattern_view_ = std::exchange(other.pattern_view_, nullptr);
-    data_view_ = std::exchange(other.data_view_, nullptr);
+    resetView(other.blockIter(), other.patternPtr());
+    other.resetView(nullptr, nullptr);
   }
 
   template <class B, class P, class A>
@@ -417,13 +434,13 @@ namespace Dune
     // preserve source validity by moving elements into newly allocated storage.
     if (alloc_ == other.alloc_) {
       pattern_ = std::move(other.pattern_);
-      pattern_view_ = std::exchange(other.pattern_view_, nullptr);
-      data_view_ = std::exchange(other.data_view_, nullptr);
+      resetView(other.blockIter(), other.patternPtr());
+      other.resetView(nullptr, nullptr);
     } else {
       pattern_ = other.pattern_;
-      pattern_view_ = pattern_.get();
-      if (other.data_view_)
-        allocateDataMove(other.data_view_);
+      resetView(nullptr, pattern_.get());
+      if (other.blockIter())
+        allocateDataMove(other.blockIter());
     }
   }
 
@@ -437,37 +454,36 @@ namespace Dune
         resetData();
         alloc_ = std::move(other.alloc_);
         pattern_ = std::move(other.pattern_);
-        pattern_view_ = std::exchange(other.pattern_view_, nullptr);
-        data_view_ = std::exchange(other.data_view_, nullptr);
+        resetView(other.blockIter(), other.patternPtr());
+        other.resetView(nullptr, nullptr);
       // Also fast when allocators match even without propagation.
       } else if (alloc_ == other.alloc_) {
         resetData();
         pattern_ = std::move(other.pattern_);
-        pattern_view_ = std::exchange(other.pattern_view_, nullptr);
-        data_view_ = std::exchange(other.data_view_, nullptr);
+        resetView(other.blockIter(), other.patternPtr());
+        other.resetView(nullptr, nullptr);
       } else {
         // Conservative path: rebuild data with this allocator, moving entries
         // one by one and restoring the source on construction failure.
         auto new_pattern = other.pattern_;
         auto* new_pattern_view = new_pattern.get();
-        B* new_data = nullptr;
+        block_iter_type new_block_ptr = nullptr;
 
-        if (new_pattern_view && other.data_view_)
-          new_data = allocateData(
+        if (new_pattern_view && other.blockIter())
+          new_block_ptr = allocateData(
             alloc_,
             new_pattern_view->count(),
-            [&](auto& block_alloc, block_type* ptr, size_type i) {
-              constructBlock(block_alloc, ptr, alloc_, std::move(other.data_view_[i]));
+            [&](auto& block_alloc, block_iter_type ptr, size_type i) {
+              constructBlock(block_alloc, ptr, alloc_, std::move(other.blockIter()[i]));
             },
             [&](size_type i, block_type& block) {
-              other.data_view_[i] = std::move(block);
+              other.blockIter()[i] = std::move(block);
             });
 
         resetData();
 
         pattern_ = std::move(new_pattern);
-        pattern_view_ = new_pattern_view;
-        data_view_ = new_data;
+        resetView(new_block_ptr, new_pattern_view);
       }
     }
     return *this;

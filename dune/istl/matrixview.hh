@@ -48,21 +48,22 @@ namespace Dune
   template <std::random_access_iterator B, class P>
   class MatrixView
   {
-    //! const iterator of B
-#if __cpp_lib_ranges_as_const <= 202311L
-    class CB;
-#else
-    using CB = std::basic_const_iterator<B>;
-#endif
-
   public:
+    //! The iterator type used to access the blocks of the matrix.
+    using block_iter_type = B;
+    //! The const iterator type used to access the blocks of the matrix.
+#if __cpp_lib_ranges_as_const <= 202311L
+    class block_const_iter_type;
+#else
+    using block_const_iter_type = std::basic_const_iterator<B>;
+#endif
 
     //! The type used for the sparsity pattern.
     using pattern_type = P;
     //! The type used for the index set of rows.
     using row_index_range_type = std::ranges::range_value_t<pattern_type>;
     //! The type of blocks in the matrix
-    using block_type = std::iter_value_t<B>;
+    using block_type = std::iter_value_t<block_iter_type>;
     //! The type of blocks in the matrix
     using value_type = block_type;
     //! The type used to count elements in the row and column index sets
@@ -70,9 +71,9 @@ namespace Dune
     //! The type of the field
     using field_type = typename FieldTraits<block_type>::field_type;
     //! The type representing a mutable matrix row
-    using row_type = Imp::VectorView<B, row_index_range_type>;
+    using row_type = Imp::VectorView<block_iter_type, row_index_range_type>;
     //! The type representing a const matrix row
-    using const_row_type = Imp::VectorView<CB, row_index_range_type>;
+    using const_row_type = Imp::VectorView<block_const_iter_type, row_index_range_type>;
     //! The type of mutable matrix iterators over the rows
     class Iterator;
     //! The type of const matrix iterators over the rows
@@ -94,36 +95,37 @@ namespace Dune
      * \brief Construct a view from data iterator and sparsity pattern.
      *
      * \param data Iterator to the first stored block.
-     * \param pattern_view Pointer to the external sparsity pattern.
+     * \param pattern_ptr Pointer to the external sparsity pattern.
      */
-    MatrixView(B data_view, pattern_type const* pattern_view)
-      : data_view_(data_view), pattern_view_(pattern_view)
+    MatrixView(block_iter_type block_iter, pattern_type const* pattern_ptr) noexcept
+      : block_iter_(block_iter), pattern_ptr_(pattern_ptr)
     {}
 
-    //! Matrix destructor.
-    ~MatrixView() = default;
-
     /** \brief Return a mutable view of row \p i. */
-    row_type operator[](size_type i);
+    row_type operator[](size_type i) { return begin()[i]; }
 
     /** \brief Return a const view of row \p i. */
-    const_row_type operator[](size_type i) const;
+    const_row_type operator[](size_type i) const { return begin()[i]; }
 
     /** \brief Return iterator to the first row. */
-    Iterator begin();
+    Iterator begin()  { return {block_iter_, pattern_ptr_, 0}; }
 
     /** \brief Return iterator one past the last row. */
-    Iterator end();
+    Iterator end() { return {block_iter_, pattern_ptr_, pattern_ptr_->size()}; }
 
     /** \brief Return const iterator to the first row. */
-    ConstIterator begin() const;
+    ConstIterator begin() const { return cbegin(); }
 
     /** \brief Return const iterator one past the last row. */
-    ConstIterator end() const;
+    ConstIterator end() const { return cend(); }
 
-    /**
-     * \brief Compute \f$this \leftarrow this + \alpha b\f$.
-     */
+    /** \brief Return const iterator to the first row. */
+    ConstIterator cbegin() const { return {{block_iter_, pattern_ptr_, 0}}; }
+
+    /** \brief Return const iterator one past the last row. */
+    ConstIterator cend() const { return {{block_iter_, pattern_ptr_, pattern_ptr_->size()}}; }
+
+    /** \brief Compute \f$this \leftarrow this + \alpha b\f$. */
     template <class OtherB, class OtherI>
     MatrixView &axpy(field_type alpha, const MatrixView<OtherB, OtherI> &b);
 
@@ -238,8 +240,8 @@ namespace Dune
     MatrixView &operator=(const field_type &k);
 
     const pattern_type& pattern() const {
-      assert(pattern_view_);
-      return *pattern_view_;
+      assert(pattern_ptr_);
+      return *pattern_ptr_;
     }
 
   private:
@@ -250,20 +252,34 @@ namespace Dune
     void mtvImpl(const X &x, Y &y, F &&op) const;
 
   protected:
-    B data() {
-      assert(data_view_);
-      return data_view_;
+
+    //! Reset the view to point to \p data_iter and \p pattern_ptr.
+    void resetView(block_iter_type data_iter, pattern_type const* pattern_ptr)
+    {
+      block_iter_ = data_iter;
+      pattern_ptr_ = pattern_ptr;
     }
 
-    CB data() const {
-      assert(data_view_);
-      return CB{data_view_};
+    //! Return the underlying block iterator.
+    block_iter_type blockIter() {
+      return block_iter_;
     }
 
+    //! Return the underlying block iterator as a const iterator.
+    block_const_iter_type blockIter() const {
+      return block_const_iter_type{block_iter_};
+    }
+
+    //! Return the underlying pattern pointer.
+    pattern_type const* patternPtr() const {
+      return pattern_ptr_;
+    }
+
+  private:
     // View to underlying data
-    B data_view_ = nullptr;
+    block_iter_type block_iter_ = {};
     // View to underlying sparsity pattern.
-    pattern_type const* pattern_view_ = nullptr;
+    pattern_type const* pattern_ptr_ = nullptr;
   };
 
   template <std::random_access_iterator B, class I>
@@ -287,14 +303,14 @@ namespace Dune
    * const-qualified element access for const matrix row views.
    */
   template <std::random_access_iterator B, class I>
-  class MatrixView<B, I>::CB
-    : public Dune::IteratorFacade<MatrixView<B, I>::CB,
+  class MatrixView<B, I>::block_const_iter_type
+    : public Dune::IteratorFacade<MatrixView<B, I>::block_const_iter_type,
                                   std::random_access_iterator_tag,
                                   std::remove_reference_t<const Impl::iter_const_reference_t<B>>,
                                   const Impl::iter_const_reference_t<B>>
   {
     using Facade =
-      Dune::IteratorFacade<CB,
+      Dune::IteratorFacade<block_const_iter_type,
                            std::random_access_iterator_tag,
                            std::remove_reference_t<const Impl::iter_const_reference_t<B>>,
                            const Impl::iter_const_reference_t<B>>;
@@ -306,19 +322,19 @@ namespace Dune
     using difference_type = typename Facade::difference_type;
 
     //! Default constructor.
-    constexpr CB() noexcept = default;
+    constexpr block_const_iter_type() noexcept = default;
     //! Copy constructor.
-    constexpr CB(const CB& other) = default;
+    constexpr block_const_iter_type(const block_const_iter_type& other) = default;
     //! Copy assignment operator.
-    constexpr CB& operator=(const CB& other) = default;
+    constexpr block_const_iter_type& operator=(const block_const_iter_type& other) = default;
 
     //! Construct a const iterator from a mutable iterator.
-    constexpr CB(const B& it) noexcept(std::is_nothrow_copy_constructible_v<B>)
+    constexpr block_const_iter_type(const B& it) noexcept(std::is_nothrow_copy_constructible_v<B>)
       : it_(it)
     {}
 
     //! Copy assignment operator from a mutable iterator.
-    constexpr CB& operator=(const B& it) noexcept(std::is_nothrow_copy_assignable_v<B>)
+    constexpr block_const_iter_type& operator=(const B& it) noexcept(std::is_nothrow_copy_assignable_v<B>)
     {
       it_ = it;
       return *this;
@@ -328,7 +344,7 @@ namespace Dune
     constexpr reference operator*() const { return *it_; }
 
     //! Compare const iterators for equality and ordering.
-    friend auto operator<=>(const CB& it1,
+    friend auto operator<=>(const block_const_iter_type& it1,
                             const B& it2) noexcept
     {
       return it1.baseIterator() <=> it2;
@@ -336,7 +352,7 @@ namespace Dune
 
     //! Compare const iterators for equality and ordering.
     friend auto operator<=>(const B& it1,
-                            const CB& it2) noexcept
+                            const block_const_iter_type& it2) noexcept
     {
       return it1 <=> it2.baseIterator();
     }
@@ -364,7 +380,7 @@ namespace Dune
   {
     using Facade = Dune::IteratorFacade<Iterator, std::random_access_iterator_tag, row_type, row_type, Dune::ProxyArrowResult<row_type>>;
 
-    Iterator(B data_view, pattern_type const* pattern_view, size_type row);
+    Iterator(block_iter_type data_iter, pattern_type const* pattern_ptr, size_type row);
 
   public:
     /** \brief Default constructor creating a singular iterator. */
@@ -390,9 +406,9 @@ namespace Dune
     size_type &baseIterator() { return row_; }
 
     // View to underlying data
-    B data_view_ = nullptr;
+    block_iter_type block_iter_ = {};
     // View to underlying sparsity pattern.
-    pattern_type const* pattern_view_ = nullptr;
+    pattern_type const* pattern_ptr_ = nullptr;
     // The current logical row index of the iterator.
     size_type row_ = 0;
   };
@@ -438,51 +454,15 @@ namespace Dune
     size_type &baseIterator() { return it_.baseIterator(); }
 
     //! The underlying mutable iterator wrapped by this const iterator.
-    Iterator it_;
+    Iterator it_ = {};
   };
 
   // MatrixView implementation
 
   template <std::random_access_iterator B, class I>
-  typename MatrixView<B, I>::row_type MatrixView<B, I>::operator[](size_type i)
-  {
-    return begin()[i];
-  }
-
-  template <std::random_access_iterator B, class I>
-  typename MatrixView<B, I>::const_row_type MatrixView<B, I>::operator[](size_type i) const
-  {
-    return begin()[i];
-  }
-
-  template <std::random_access_iterator B, class I>
-  typename MatrixView<B, I>::Iterator MatrixView<B, I>::begin()
-  {
-    return {data_view_, pattern_view_, 0};
-  }
-
-  template <std::random_access_iterator B, class I>
-  typename MatrixView<B, I>::Iterator MatrixView<B, I>::end()
-  {
-    return {data_view_, pattern_view_, pattern_view_->size()};
-  }
-
-  template <std::random_access_iterator B, class I>
-  typename MatrixView<B, I>::ConstIterator MatrixView<B, I>::begin() const
-  {
-    return {iterator{data_view_, pattern_view_, 0}};
-  }
-
-  template <std::random_access_iterator B, class I>
-  typename MatrixView<B, I>::ConstIterator MatrixView<B, I>::end() const
-  {
-    return {iterator{data_view_, pattern_view_, pattern_view_->size()}};
-  }
-
-  template <std::random_access_iterator B, class I>
   MatrixView<B, I> &MatrixView<B, I>::operator*=(const field_type &k)
   {
-    std::for_each_n(data(), pattern().count(), [&k](block_type &b){
+    std::for_each_n(blockIter(), pattern().count(), [&k](block_type &b){
       b *= k;
     });
     return *this;
@@ -491,7 +471,7 @@ namespace Dune
   template <std::random_access_iterator B, class I>
   MatrixView<B, I> &MatrixView<B, I>::operator/=(const field_type &k)
   {
-    std::for_each_n(data(), pattern().count(), [&k](block_type &b){
+    std::for_each_n(blockIter(), pattern().count(), [&k](block_type &b){
       b /= k;
     });
     return *this;
@@ -501,10 +481,10 @@ namespace Dune
   template <class OtherB, class OtherI>
   MatrixView<B, I> &MatrixView<B, I>::operator+=(const MatrixView<OtherB, OtherI> &b)
   {
-    if (pattern_view_ == b.pattern_view_)
+    if (pattern_ptr_ == b.pattern_ptr_)
     {
       for (size_type i = 0; i < pattern().count(); ++i)
-        data()[i] += b.data()[i];
+        blockIter()[i] += b.blockIter()[i];
     }
     else if (pattern().size() == b.pattern().size() && pattern().range().size() == b.pattern().range().size())
     {
@@ -522,10 +502,10 @@ namespace Dune
   template <class OtherB, class OtherI>
   MatrixView<B, I> &MatrixView<B, I>::operator-=(const MatrixView<OtherB, OtherI> &b)
   {
-    if (pattern_view_ == b.pattern_view_)
+    if (pattern_ptr_ == b.pattern_ptr_)
     {
       for (size_type i = 0; i < pattern().count(); ++i)
-        data()[i] -= b.data()[i];
+        blockIter()[i] -= b.blockIter()[i];
     }
     else if (pattern().size() == b.pattern().size() && pattern().range().size() == b.pattern().range().size())
     {
@@ -542,7 +522,7 @@ namespace Dune
   template <std::random_access_iterator B, class I>
   MatrixView<B, I> &MatrixView<B, I>::operator=(const field_type &f)
   {
-    std::for_each_n(data(), pattern().count(), [&f](block_type &block){
+    std::for_each_n(blockIter(), pattern().count(), [&f](block_type &block){
       block = f;
     });
     return *this;
@@ -552,10 +532,10 @@ namespace Dune
   template <class OtherB, class OtherI>
   MatrixView<B, I> &MatrixView<B, I>::axpy(field_type alpha, const MatrixView<OtherB, OtherI> &b)
   {
-    if (pattern_view_ == b.pattern_view_)
+    if (pattern_ptr_ == b.pattern_ptr_)
     {
       for (size_type i = 0; i < pattern().count(); ++i)
-        Impl::asMatrix(data()[i]).axpy(alpha, Impl::asMatrix(b.data()[i]));
+        Impl::asMatrix(blockIter()[i]).axpy(alpha, Impl::asMatrix(b.blockIter()[i]));
     }
     else if (pattern().size() == b.pattern().size() && pattern().range().size() == b.pattern().range().size())
     {
@@ -589,7 +569,7 @@ namespace Dune
       for (size_type j : pattern()[i]) {
         auto &&xj = Impl::asVector(x[j]);
         auto &&yi = Impl::asVector(y[i]);
-        op(Impl::asMatrix(data()[nnz]), xj, yi);
+        op(Impl::asMatrix(blockIter()[nnz]), xj, yi);
         ++nnz;
       }
     }
@@ -612,7 +592,7 @@ namespace Dune
       for (size_type j : pattern()[i]) {
         auto &&xi = Impl::asVector(x[i]);
         auto &&yj = Impl::asVector(y[j]);
-        op(Impl::asMatrix(data()[nnz]), xi, yj);
+        op(Impl::asMatrix(blockIter()[nnz]), xi, yj);
         ++nnz;
       }
     }
@@ -809,34 +789,34 @@ namespace Dune
   template <std::random_access_iterator B, class I>
   auto MatrixView<B, I>::N() const -> size_type
   {
-    return pattern_view_ ? pattern().size() : 0;
+    return pattern_ptr_ ? pattern().size() : 0;
   }
 
   template <std::random_access_iterator B, class I>
   auto MatrixView<B, I>::M() const -> size_type
   {
-    return pattern_view_ ? pattern().range().size() : 0;
+    return pattern_ptr_ ? pattern().range().size() : 0;
   }
 
   template <std::random_access_iterator B, class I>
   auto MatrixView<B, I>::nonzeroes() const -> size_type
   {
-    return pattern_view_ ? pattern().count() : 0;
+    return pattern_ptr_ ? pattern().count() : 0;
   }
 
   // Iterator implementation
 
   template <std::random_access_iterator B, class I>
-  MatrixView<B, I>::Iterator::Iterator(B data_view, pattern_type const* pattern_view, size_type row)
-      : data_view_(data_view), pattern_view_(pattern_view), row_(row)
+  MatrixView<B, I>::Iterator::Iterator(block_iter_type data_iter, pattern_type const* pattern_ptr, size_type row)
+      : block_iter_(data_iter), pattern_ptr_(pattern_ptr), row_(row)
   {
   }
 
   template <std::random_access_iterator B, class I>
   typename MatrixView<B, I>::Iterator::reference MatrixView<B, I>::Iterator::operator*() const
   {
-    auto offset = pattern_view_->offset(row_);
-    return {data_view_ + offset, pattern_view_->operator[](row_)};
+    auto offset = pattern_ptr_->offset(row_);
+    return {block_iter_ + offset, pattern_ptr_->operator[](row_)};
   }
 
   // ConstIterator implementation
@@ -857,8 +837,8 @@ namespace Dune
   template <std::random_access_iterator B, class I>
   typename MatrixView<B, I>::ConstIterator::reference MatrixView<B, I>::ConstIterator::operator*() const
   {
-    auto offset = it_.pattern_view_->offset(index());
-    return {it_.data_view_ + offset, it_.pattern_view_->operator[](index())};
+    auto offset = it_.pattern_ptr_->offset(index());
+    return {it_.block_iter_ + offset, it_.pattern_ptr_->operator[](index())};
   }
 
 } // namespace Dune
