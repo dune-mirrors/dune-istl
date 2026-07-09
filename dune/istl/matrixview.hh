@@ -308,16 +308,16 @@ namespace Dune
    */
   template <std::random_access_iterator B, class I>
   class MatrixView<B, I>::block_const_iter_type
-    : public Dune::IteratorFacade<MatrixView<B, I>::block_const_iter_type,
+    : public Dune::IteratorFacade<block_const_iter_type,
                                   std::random_access_iterator_tag,
-                                  std::remove_reference_t<const Impl::iter_const_reference_t<B>>,
-                                  const Impl::iter_const_reference_t<B>>
+                                  std::remove_reference_t<Impl::iter_const_reference_t<B>>,
+                                  Impl::iter_const_reference_t<B>>
   {
     using Facade =
       Dune::IteratorFacade<block_const_iter_type,
                            std::random_access_iterator_tag,
-                           std::remove_reference_t<const Impl::iter_const_reference_t<B>>,
-                           const Impl::iter_const_reference_t<B>>;
+                           std::remove_reference_t<Impl::iter_const_reference_t<B>>,
+                           Impl::iter_const_reference_t<B>>;
 
   public:
     //! The type used for references to the components
@@ -327,10 +327,6 @@ namespace Dune
 
     //! Default constructor.
     constexpr block_const_iter_type() noexcept = default;
-    //! Copy constructor.
-    constexpr block_const_iter_type(const block_const_iter_type& other) = default;
-    //! Copy assignment operator.
-    constexpr block_const_iter_type& operator=(const block_const_iter_type& other) = default;
 
     //! Construct a const iterator from a mutable iterator.
     constexpr block_const_iter_type(const B& it) noexcept(std::is_nothrow_copy_constructible_v<B>)
@@ -348,15 +344,15 @@ namespace Dune
     constexpr reference operator*() const { return *it_; }
 
     //! Compare const iterators for equality and ordering.
-    friend auto operator<=>(const block_const_iter_type& it1,
-                            const B& it2) noexcept
+    constexpr friend auto operator<=>(const block_const_iter_type& it1,
+                                      const B& it2) noexcept
     {
       return it1.baseIterator() <=> it2;
     }
 
     //! Compare const iterators for equality and ordering.
-    friend auto operator<=>(const B& it1,
-                            const block_const_iter_type& it2) noexcept
+    constexpr friend auto operator<=>(const B& it1,
+                                      const block_const_iter_type& it2) noexcept
     {
       return it1 <=> it2.baseIterator();
     }
@@ -364,11 +360,11 @@ namespace Dune
   private:
     friend Dune::IteratorFacadeAccess;
 
-    constexpr const B& baseIterator() const { return it_; }
-    constexpr B& baseIterator() { return it_; }
+    constexpr const B& baseIterator() const noexcept { return it_; }
+    constexpr B& baseIterator() noexcept { return it_; }
 
     //! The underlying mutable block iterator wrapped by this const adapter.
-    B it_;
+    block_iter_type it_;
   };
 #endif
 
@@ -384,30 +380,28 @@ namespace Dune
   {
     using Facade = Dune::IteratorFacade<Iterator, std::random_access_iterator_tag, row_type, row_type, Dune::ProxyArrowResult<row_type>>;
 
-    Iterator(block_iter_type data_iter, pattern_type const* pattern_ptr, size_type row);
+    constexpr Iterator(block_iter_type block_iter, pattern_type const* pattern_ptr, size_type row)
+      : block_iter_(block_iter), pattern_ptr_(pattern_ptr), row_(row)
+    {}
 
   public:
-    /** \brief Default constructor creating a singular iterator. */
-    Iterator() = default;
-    /** \brief Copy constructor. */
-    Iterator(const Iterator &other) = default;
-    /** \brief Copy assignment operator. */
-    Iterator &operator=(const Iterator &other) = default;
-
     using reference = typename Facade::reference;
 
     /** \brief Dereference to the row view at the current row index. */
-    reference operator*() const;
+    constexpr reference operator*() const {
+      auto offset = pattern_ptr_->offset(row_);
+      return {block_iter_ + offset, pattern_ptr_->operator[](row_)};
+    }
 
     /** \brief Return the current logical row index. */
-    size_type index() const { return row_; }
+    constexpr size_type index() const { return row_; }
 
   private:
     friend Dune::IteratorFacadeAccess;
     friend MatrixView;
 
-    const size_type &baseIterator() const { return row_; }
-    size_type &baseIterator() { return row_; }
+    constexpr const size_type &baseIterator() const noexcept { return row_; }
+    constexpr size_type &baseIterator() noexcept { return row_; }
 
     // View to underlying data
     block_iter_type block_iter_ = {};
@@ -429,33 +423,41 @@ namespace Dune
   {
     using Facade = Dune::IteratorFacade<ConstIterator, std::random_access_iterator_tag, const_row_type, const_row_type, Dune::ProxyArrowResult<const_row_type>>;
 
-    public:
+  public:
+
     /** \brief Default constructor creating a singular iterator. */
-    ConstIterator() = default;
+    ConstIterator() noexcept = default;
+
     /** \brief Construct const iterator from mutable iterator. */
-    ConstIterator(const Iterator& it);
-    /** \brief Copy constructor. */
-    ConstIterator(const ConstIterator &other) = default;
-    /** \brief Copy assignment operator. */
-    ConstIterator &operator=(const ConstIterator &other) = default;
+    constexpr ConstIterator(const Iterator& it) noexcept(std::is_nothrow_copy_constructible_v<Iterator>)
+      : it_{it}
+    {}
+
     /** \brief Assign from mutable iterator. */
-    ConstIterator &operator=(const Iterator &other);
+    constexpr ConstIterator &operator=(const Iterator &other) noexcept(std::is_nothrow_copy_assignable_v<Iterator>)
+    {
+      it_ = other;
+      return *this;
+    }
 
     using reference = typename Facade::reference;
 
     /** \brief Dereference to the const row view at the current row index. */
-    reference operator*() const;
+    constexpr reference operator*() const {
+      auto offset = it_.pattern_ptr_->offset(index());
+      return {it_.block_iter_ + offset, it_.pattern_ptr_->operator[](index())};
+    }
 
     /** \brief Return the current logical row index. */
-    size_type index() const { return it_.index(); }
+    constexpr size_type index() const { return it_.index(); }
 
   private:
     friend Dune::IteratorFacadeAccess;
     friend Iterator;
     friend MatrixView;
 
-    const size_type &baseIterator() const { return it_.baseIterator(); }
-    size_type &baseIterator() { return it_.baseIterator(); }
+    constexpr const size_type &baseIterator() const noexcept { return it_.baseIterator(); }
+    constexpr size_type &baseIterator() noexcept { return it_.baseIterator(); }
 
     //! The underlying mutable iterator wrapped by this const iterator.
     Iterator it_ = {};
@@ -778,71 +780,6 @@ namespace Dune
     }
 
     return (markNaN != markNaN) ? markNaN : norm;
-  }
-
-  template <std::random_access_iterator B, class I>
-  bool MatrixView<B, I>::exists(size_type i, size_type j) const
-  {
-#ifdef DUNE_ISTL_WITH_CHECKING
-      if (i<0 || i>=N()) DUNE_THROW(BCRSMatrixError,"row index out of range");
-      if (j<0 || j>=M()) DUNE_THROW(BCRSMatrixError,"column index out of range");
-#endif
-    return this->operator[](i).contains(j);
-  }
-
-  template <std::random_access_iterator B, class I>
-  auto MatrixView<B, I>::N() const -> size_type
-  {
-    return pattern_ptr_ ? pattern().size() : 0;
-  }
-
-  template <std::random_access_iterator B, class I>
-  auto MatrixView<B, I>::M() const -> size_type
-  {
-    return pattern_ptr_ ? pattern().range().size() : 0;
-  }
-
-  template <std::random_access_iterator B, class I>
-  auto MatrixView<B, I>::nonzeroes() const -> size_type
-  {
-    return pattern_ptr_ ? pattern().count() : 0;
-  }
-
-  // Iterator implementation
-
-  template <std::random_access_iterator B, class I>
-  MatrixView<B, I>::Iterator::Iterator(block_iter_type data_iter, pattern_type const* pattern_ptr, size_type row)
-      : block_iter_(data_iter), pattern_ptr_(pattern_ptr), row_(row)
-  {
-  }
-
-  template <std::random_access_iterator B, class I>
-  typename MatrixView<B, I>::Iterator::reference MatrixView<B, I>::Iterator::operator*() const
-  {
-    auto offset = pattern_ptr_->offset(row_);
-    return {block_iter_ + offset, pattern_ptr_->operator[](row_)};
-  }
-
-  // ConstIterator implementation
-
-  template <std::random_access_iterator B, class I>
-  MatrixView<B, I>::ConstIterator::ConstIterator(const Iterator& it)
-      : it_{it}
-  {
-  }
-
-  template <std::random_access_iterator B, class I>
-  typename MatrixView<B, I>::ConstIterator& MatrixView<B, I>::ConstIterator::operator=(const Iterator& it)
-  {
-    it_ = it;
-    return *this;
-  }
-
-  template <std::random_access_iterator B, class I>
-  typename MatrixView<B, I>::ConstIterator::reference MatrixView<B, I>::ConstIterator::operator*() const
-  {
-    auto offset = it_.pattern_ptr_->offset(index());
-    return {it_.block_iter_ + offset, it_.pattern_ptr_->operator[](index())};
   }
 
 } // namespace Dune
