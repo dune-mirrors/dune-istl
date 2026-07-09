@@ -6,6 +6,8 @@
 #ifndef DUNE_ISTL_MATRIXVIEW_HH
 #define DUNE_ISTL_MATRIXVIEW_HH
 
+#include <dune-istl-config.hh> // DUNE_ISTL_WITH_CHECKING_NOEXCEPT
+
 #include "vectorview.hh"
 
 #include <dune/common/std/type_traits.hh>
