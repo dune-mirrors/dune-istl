@@ -389,6 +389,7 @@ namespace Dune::Experimental {
   {
     using Facade = Dune::IteratorFacade<Iterator, std::random_access_iterator_tag, row_type, row_type, Dune::ProxyArrowResult<row_type>>;
 
+  protected:
     constexpr Iterator(block_iter_type block_iter, pattern_type const* pattern_ptr, size_type row)
       : block_iter_(block_iter), pattern_ptr_(pattern_ptr), row_(row)
     {}

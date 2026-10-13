@@ -133,8 +133,7 @@ namespace Dune::Experimental
     //! Get shared storage of the pattern.
     std::shared_ptr<const pattern_type> patternStorage() const { return pattern_; }
 
-  private:
-
+  protected:
     // matrix view getters/setters
     using MatrixView<B*, P>::blockIter;
     using MatrixView<B*, P>::patternPtr;
@@ -172,6 +171,7 @@ namespace Dune::Experimental
     //! Deallocate block storage if it exists.
     void deallocateData();
 
+  private:
     // storage of index sets, shared ownership with this class
     std::shared_ptr<const pattern_type> pattern_;
 
