@@ -566,9 +566,13 @@ namespace Dune
       DUNE_THROW(ISTLError, "Size of right-hand-side vector b does not match the number of matrix rows!");
     if (mat.M() != x.dim())
       DUNE_THROW(ISTLError, "Size of solution vector x does not match the number of matrix columns!");
-    if (std::distance(b.begin(),b.end())!=b.size())
+    if (b.size() >= std::numeric_limits<ptrdiff_t>::max())
+      DUNE_THROW(ISTLError, "Size of right-hand-side vector b is too large!");
+    if (x.size() >= std::numeric_limits<ptrdiff_t>::max())
+      DUNE_THROW(ISTLError, "Size of solution vector x is too large!");
+    if (std::distance(b.begin(),b.end())!=static_cast<std::ptrdiff_t>(b.size()))
       DUNE_THROW(ISTLError, "Vector b is not contiguous!");
-    if (std::distance(x.begin(),x.end())!=x.size())
+    if (std::distance(x.begin(),x.end())!=static_cast<std::ptrdiff_t>(x.size()))
       DUNE_THROW(ISTLError, "Vector x is not contiguous!");
     if (mat.M()+mat.N()==0)
       DUNE_THROW(ISTLError, "Matrix of SuperLU is null!");
