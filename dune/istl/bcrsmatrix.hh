@@ -919,15 +919,6 @@ namespace Dune {
       // and deallocate rows only if n != Mat.n
       deallocate(n!=Mat.n);
 
-      // reallocate the rows if required
-      if (n>0 && n!=Mat.n) {
-        // free rows
-        row_allocator_t rowAllocator_(allocator_);
-        for(row_type *riter=r+(n-1), *rend=r-1; riter!=rend; --riter)
-          std::allocator_traits<row_allocator_t>::destroy(rowAllocator_, riter);
-        rowAllocator_.deallocate(r,n);
-      }
-
       nnz_ = Mat.nonzeroes();
 
       // allocate a, share j_
