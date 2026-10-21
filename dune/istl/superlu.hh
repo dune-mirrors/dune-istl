@@ -566,6 +566,10 @@ namespace Dune
       DUNE_THROW(ISTLError, "Size of right-hand-side vector b does not match the number of matrix rows!");
     if (mat.M() != x.dim())
       DUNE_THROW(ISTLError, "Size of solution vector x does not match the number of matrix columns!");
+    if (std::distance(b.begin(),b.end())!=b.size())
+      DUNE_THROW(ISTLError, "Vector b is not contiguous!");
+    if (std::distance(x.begin(),x.end())!=x.size())
+      DUNE_THROW(ISTLError, "Vector x is not contiguous!");
     if (mat.M()+mat.N()==0)
       DUNE_THROW(ISTLError, "Matrix of SuperLU is null!");
 
@@ -574,16 +578,16 @@ namespace Dune
     SuperMatrix rB, rX;
     if (reusevector) {
       if(first) {
-        SuperLUDenseMatChooser<T>::create(&B, (int)mat.N(), 1,  reinterpret_cast<T*>(&b[0]), (int)mat.N(), SLU_DN, GetSuperLUType<T>::type, SLU_GE);
-        SuperLUDenseMatChooser<T>::create(&X, (int)mat.N(), 1,  reinterpret_cast<T*>(&x[0]), (int)mat.N(), SLU_DN, GetSuperLUType<T>::type, SLU_GE);
+        SuperLUDenseMatChooser<T>::create(&B, (int)mat.N(), 1,  reinterpret_cast<T*>(b.data()), (int)mat.N(), SLU_DN, GetSuperLUType<T>::type, SLU_GE);
+        SuperLUDenseMatChooser<T>::create(&X, (int)mat.N(), 1,  reinterpret_cast<T*>(x.data()), (int)mat.N(), SLU_DN, GetSuperLUType<T>::type, SLU_GE);
         first=false;
       }else{
-        ((DNformat*)B.Store)->nzval=&b[0];
-        ((DNformat*)X.Store)->nzval=&x[0];
+        ((DNformat*)B.Store)->nzval=b.data();
+        ((DNformat*)X.Store)->nzval=x.data();
       }
     } else {
-      SuperLUDenseMatChooser<T>::create(&rB, (int)mat.N(), 1,  reinterpret_cast<T*>(&b[0]), (int)mat.N(), SLU_DN, GetSuperLUType<T>::type, SLU_GE);
-      SuperLUDenseMatChooser<T>::create(&rX, (int)mat.N(), 1,  reinterpret_cast<T*>(&x[0]), (int)mat.N(), SLU_DN, GetSuperLUType<T>::type, SLU_GE);
+      SuperLUDenseMatChooser<T>::create(&rB, (int)mat.N(), 1,  reinterpret_cast<T*>(b.data()), (int)mat.N(), SLU_DN, GetSuperLUType<T>::type, SLU_GE);
+      SuperLUDenseMatChooser<T>::create(&rX, (int)mat.N(), 1,  reinterpret_cast<T*>(x.data()), (int)mat.N(), SLU_DN, GetSuperLUType<T>::type, SLU_GE);
       mB = &rB;
       mX = &rX;
     }

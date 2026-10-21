@@ -395,6 +395,10 @@ namespace Dune {
       // we have to convert x and b into flat structures
       // however, this is linear in time
       std::vector<T> xFlat(x.dim()), bFlat(b.dim());
+      if (xFlat.size() != x.dim())
+        DUNE_THROW(ISTLError, "Vector x is not contiguous!");
+      if (bFlat.size() != b.dim())
+        DUNE_THROW(ISTLError, "Vector b is not contiguous!");
 
       flatVectorForEach(x, [&](auto&& entry, auto&& offset)
       {
@@ -411,8 +415,8 @@ namespace Dune {
                     umfpackMatrix_.getColStart(),
                     umfpackMatrix_.getRowIndex(),
                     umfpackMatrix_.getValues(),
-                    reinterpret_cast<double*>(&xFlat[0]),
-                    reinterpret_cast<double*>(&bFlat[0]),
+                    reinterpret_cast<double*>(xFlat.data()),
+                    reinterpret_cast<double const*>(bFlat.data()),
                     UMF_Numeric,
                     UMF_Control,
                     UMF_Apply_Info);
