@@ -144,7 +144,7 @@ protected:
 #if HAVE_SUPERLU
     // 5) select a linear solver for power iteration based iterative
     //    eigenvalue algorithms
-    typedef Dune::SuperLU<BCRSMatrix> PIALS;
+    typedef Dune::SuperLU<BCRSMatrix, BlockVector, BlockVector> PIALS;
     const unsigned int piaLS_verbosity = 0;
     PIALS piaLS(pia.getIterationMatrix(),piaLS_verbosity);
 #else
@@ -273,7 +273,7 @@ protected:
 #if HAVE_SUPERLU
     // 7) select a linear solver for power iteration based iterative
     //    eigenvalue algorithms for m^t*m
-    typedef Dune::SuperLU<BCRSMatrix> PIALS;
+    typedef Dune::SuperLU<BCRSMatrix, BlockVector, BlockVector> PIALS;
     const unsigned int piaLS_verbosity = 0;
     PIALS piaLS(pia.getIterationMatrix(),piaLS_verbosity);
 #else

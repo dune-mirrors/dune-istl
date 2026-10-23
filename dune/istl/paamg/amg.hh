@@ -653,7 +653,7 @@ namespace Dune
       template <class M>
       struct Solver< M, umfpack >
       {
-        typedef UMFPack< M > type;
+        typedef UMFPack< M, Vector, Vector> type;
         static type* create(const M& mat, bool verbose, bool reusevector )
         {
           return new type(mat, verbose, reusevector );
@@ -665,7 +665,7 @@ namespace Dune
       template <class M>
       struct Solver< M, superlu >
       {
-        typedef SuperLU< M > type;
+        typedef SuperLU< M, Vector, Vector> type;
         static type* create(const M& mat, bool verbose, bool reusevector )
         {
           return new type(mat, verbose, reusevector );

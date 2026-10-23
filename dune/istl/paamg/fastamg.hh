@@ -416,11 +416,11 @@ namespace Dune
           {
             if(matrices_->matrices().coarsest().getRedistributed().getmat().N()>0)
               // We are still participating on this level
-              solver_.reset(new DIRECTSOLVER<typename M::matrix_type>(matrices_->matrices().coarsest().getRedistributed().getmat(), false, false));
+              solver_.reset(new DIRECTSOLVER<typename M::matrix_type, X, X>(matrices_->matrices().coarsest().getRedistributed().getmat(), false, false));
             else
               solver_.reset();
           }else
-            solver_.reset(new DIRECTSOLVER<typename M::matrix_type>(matrices_->matrices().coarsest()->getmat(), false, false));
+            solver_.reset(new DIRECTSOLVER<typename M::matrix_type, X, X>(matrices_->matrices().coarsest()->getmat(), false, false));
         }else
 #undef DIRECTSOLVER
 #endif // HAVE_SUPERLU|| HAVE_SUITESPARSE_UMFPACK

@@ -768,20 +768,20 @@ namespace Dune {
     double UMF_Control[UMFPACK_CONTROL];
   };
 
-  template<typename M>
-  struct IsDirectSolver<UMFPack<M>>
+  template<typename M, typename X, typename Y>
+  struct IsDirectSolver<UMFPack<M, X, Y>>
   {
     enum { value=true};
   };
 
-  template<typename T, typename A>
-  struct StoresColumnCompressed<UMFPack<BCRSMatrix<T,A> > >
+  template<typename T, typename A, typename X, typename Y>
+  struct StoresColumnCompressed<UMFPack<BCRSMatrix<T,A>, X, Y> >
   {
     enum { value = true };
   };
 
-  template<typename B, typename P, typename A>
-  struct StoresColumnCompressed<UMFPack<Dune::Experimental::BCRSMatrix<B,P,A> > >
+  template<typename B, typename P, typename A, typename X, typename Y>
+  struct StoresColumnCompressed<UMFPack<Dune::Experimental::BCRSMatrix<B,P,A>, X, Y> >
   {
     enum { value = true };
   };
