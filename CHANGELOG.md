@@ -5,6 +5,9 @@ SPDX-License-Identifier: LicenseRef-GPL-2.0-only-with-DUNE-exception
 
 # Master (will become release 2.12)
 
+- SuperLU and UMFPack now accept optional domain and range vector template arguments,
+  defaulting to types deduced from the matrix.
+
 - Add experimental replacement for `BCRSMatrix` and `Matrix` in the `Experimental` namespace.
 
 - Added user ordering options for the `UMFPack` solver.
