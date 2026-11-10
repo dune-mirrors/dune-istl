@@ -75,9 +75,6 @@ namespace Dune {
               @{
    */
 
-  template<typename M>
-  struct MatrixDimension;
-
   //! Statistics about compression achieved in implicit mode.
   /**
    * To enable the user to tune parameters of the implicit build mode of a
@@ -466,7 +463,6 @@ namespace Dune {
   template<class B, class A=std::allocator<B> >
   class BCRSMatrix
   {
-    friend struct MatrixDimension<BCRSMatrix>;
   public:
     enum BuildStage {
       /** @brief Matrix is not built at all, no memory has been allocated, build mode and size can still be set. */

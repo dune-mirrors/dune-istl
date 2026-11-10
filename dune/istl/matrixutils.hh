@@ -8,11 +8,13 @@
 #include <set>
 #include <vector>
 #include <limits>
+#include <numeric>
 #include <dune/common/typetraits.hh>
 #include <dune/common/fmatrix.hh>
 #include <dune/common/dynmatrix.hh>
 #include <dune/common/diagonalmatrix.hh>
 #include <dune/common/scalarmatrixview.hh>
+#include <dune/common/concepts/number.hh>
 #include <dune/istl/scaledidmatrix.hh>
 #include "istlexception.hh"
 
@@ -215,294 +217,145 @@ namespace Experimental {
     while(cur!=ooc.communicator().min(cur)) ;
   }
 
-  // Default implementation for scalar types
+  //! Utility to get number of row and column entries of a matrix M, taking into account the block structure.
   template<typename M>
-  struct MatrixDimension
-  {
-    static_assert(IsNumber<M>::value, "MatrixDimension is not implemented for this type!");
+  struct MatrixDimension;
 
-    static auto rowdim(const M& /*A*/)
+  //! Utility to get number of row and column entries of a matrix M, taking into account the block structure.
+  template<Concept::Number M>
+  struct MatrixDimension<M>
+  {
+    //! Get the number of numeric entries in the rows of the matrix A
+    static std::size_t rowdim(const M& A)
     {
       return 1;
     }
 
-    static auto coldim(const M& /*A*/)
+    //! Get the number of numeric entries in the columns of the matrix A
+    static std::size_t coldim(const M& A)
     {
       return 1;
+    }
+
+    //! Get the number of numeric entries in the i-th row of the matrix A
+    template<typename U>
+    static U rowdim(const M& A, U /*i*/)
+    {
+      return U(1);
+    }
+
+    //! Get the number of numeric entries in the c-th column of the matrix A
+    template<typename U>
+    static U coldim(const M& A, U /*c*/)
+    {
+      return U(1);
     }
   };
 
-  // Default implementation for scalar types
-  template<typename B, typename TA>
-  struct MatrixDimension<Matrix<B,TA> >
+  //! Utility to get number of row and column entries of a matrix M, taking into account the block structure.
+  template<typename M>
+  requires (!Concept::Number<M> && Concept::Number<typename M::block_type>)
+  struct MatrixDimension<M>
   {
-    using block_type = typename Matrix<B,TA>::block_type;
-    using size_type = typename Matrix<B,TA>::size_type;
-
-    static size_type rowdim (const Matrix<B,TA>& A, size_type i)
-    {
-      return MatrixDimension<block_type>::rowdim(A[i][0]);
-    }
-
-    static size_type coldim (const Matrix<B,TA>& A, size_type c)
-    {
-      return MatrixDimension<block_type>::coldim(A[0][c]);
-    }
-
-    static size_type rowdim (const Matrix<B,TA>& A)
-    {
-      size_type nn=0;
-      for (size_type i=0; i<A.N(); i++)
-        nn += rowdim(A,i);
-      return nn;
-    }
-
-    static size_type coldim (const Matrix<B,TA>& A)
-    {
-      size_type nn=0;
-      for (size_type i=0; i<A.M(); i++)
-        nn += coldim(A,i);
-      return nn;
-    }
-  };
-
-
-  template<typename B, typename TA>
-  struct MatrixDimension<BCRSMatrix<B,TA> >
-  {
-    typedef BCRSMatrix<B,TA> Matrix;
-    typedef typename Matrix::block_type block_type;
-    typedef typename Matrix::size_type size_type;
-
-    static size_type rowdim (const Matrix& A, size_type i)
-    {
-      const B* row = A.r[i].getptr();
-      if(row)
-        return MatrixDimension<block_type>::rowdim(*row);
-      else
-        return 0;
-    }
-
-    static size_type coldim (const Matrix& A, size_type c)
-    {
-      // find an entry in column c
-      if (A.nnz_ > 0)
-      {
-        for (size_type k=0; k<A.nnz_; k++) {
-          if (A.j_.get()[k] == c) {
-            return MatrixDimension<block_type>::coldim(A.a[k]);
-          }
-        }
-      }
-      else
-      {
-        for (size_type i=0; i<A.N(); i++)
-        {
-          size_type* j = A.r[i].getindexptr();
-          B*   a = A.r[i].getptr();
-          for (size_type k=0; k<A.r[i].getsize(); k++)
-            if (j[k]==c) {
-              return MatrixDimension<block_type>::coldim(a[k]);
-            }
-        }
-      }
-
-      // not found
-      return 0;
-    }
-
-    static size_type rowdim (const Matrix& A){
-      size_type nn=0;
-      for (size_type i=0; i<A.N(); i++)
-        nn += rowdim(A,i);
-      return nn;
-    }
-
-    static size_type coldim (const Matrix& A){
-      typedef typename Matrix::ConstRowIterator ConstRowIterator;
-      typedef typename Matrix::ConstColIterator ConstColIterator;
-
-      // The following code has a complexity of nnz, and
-      // typically a very small constant.
-      //
-      std::vector<size_type> coldims(A.M(),
-                                     std::numeric_limits<size_type>::max());
-
-      for (ConstRowIterator row=A.begin(); row!=A.end(); ++row)
-        for (ConstColIterator col=row->begin(); col!=row->end(); ++col)
-          // only compute blocksizes we don't already have
-          if (coldims[col.index()]==std::numeric_limits<size_type>::max())
-            coldims[col.index()] = MatrixDimension<block_type>::coldim(*col);
-
-      size_type sum = 0;
-      for (typename std::vector<size_type>::iterator it=coldims.begin();
-           it!=coldims.end(); ++it)
-        // skip rows for which no coldim could be determined
-        if ((*it)>=0)
-          sum += *it;
-
-      return sum;
-    }
-  };
-
-
-  template<typename B, int n, int m, typename TA>
-  struct MatrixDimension<BCRSMatrix<FieldMatrix<B,n,m> ,TA> >
-  {
-    typedef BCRSMatrix<FieldMatrix<B,n,m> ,TA> Matrix;
-    typedef typename Matrix::size_type size_type;
-
-    static size_type rowdim (const Matrix& /*A*/, size_type /*i*/)
-    {
-      return n;
-    }
-
-    static size_type coldim (const Matrix& /*A*/, size_type /*c*/)
-    {
-      return m;
-    }
-
-    static size_type rowdim (const Matrix& A) {
-      return A.N()*n;
-    }
-
-    static size_type coldim (const Matrix& A) {
-      return A.M()*m;
-    }
-  };
-
-  template<typename K, int n, int m>
-  struct MatrixDimension<FieldMatrix<K,n,m> >
-  {
-    typedef FieldMatrix<K,n,m> Matrix;
-    typedef typename Matrix::size_type size_type;
-
-    static size_type rowdim(const Matrix& /*A*/, size_type /*r*/)
-    {
-      return 1;
-    }
-
-    static size_type coldim(const Matrix& /*A*/, size_type /*r*/)
-    {
-      return 1;
-    }
-
-    static size_type rowdim(const Matrix& /*A*/)
-    {
-      return n;
-    }
-
-    static size_type coldim(const Matrix& /*A*/)
-    {
-      return m;
-    }
-  };
-
-  template <class T>
-  struct MatrixDimension<Dune::DynamicMatrix<T> >
-  {
-    typedef Dune::DynamicMatrix<T> MatrixType;
-    typedef typename MatrixType::size_type size_type;
-
-    static size_type rowdim(const MatrixType& /*A*/, size_type /*r*/)
-    {
-      return 1;
-    }
-
-    static size_type coldim(const MatrixType& /*A*/, size_type /*r*/)
-    {
-      return 1;
-    }
-
-    static size_type rowdim(const MatrixType& A)
+  private:
+    using size_type = typename M::size_type;
+  public:
+    //! Get the number of numeric entries in the rows of the matrix A
+    static size_type rowdim(const M& A)
     {
       return A.N();
     }
 
-    static size_type coldim(const MatrixType& A)
+    //! Get the number of numeric entries in the columns of the matrix A
+    static size_type coldim(const M& A)
     {
       return A.M();
     }
-  };
 
-  template<typename K, int n, int m, typename TA>
-  struct MatrixDimension<Matrix<FieldMatrix<K,n,m>, TA> >
-  {
-    typedef Matrix<FieldMatrix<K,n,m>, TA> ThisMatrix;
-    typedef typename ThisMatrix::size_type size_type;
-
-    static size_type rowdim(const ThisMatrix& /*A*/, size_type /*r*/)
+    //! Get the number of numeric entries in the i-th row of the matrix A
+    static size_type rowdim(const M& A, size_type i)
     {
-      return n;
+      return 1;
     }
 
-    static size_type coldim(const ThisMatrix& /*A*/, size_type /*r*/)
+    //! Get the number of numeric entries in the c-th column of the matrix A
+    static size_type coldim(const M& A, size_type c)
     {
-      return m;
-    }
-
-    static size_type rowdim(const ThisMatrix& A)
-    {
-      return A.N()*n;
-    }
-
-    static size_type coldim(const ThisMatrix& A)
-    {
-      return A.M()*m;
+      return 1;
     }
   };
 
-  template<typename K, int n>
-  struct MatrixDimension<DiagonalMatrix<K,n> >
+
+  //! Utility to get number of row and column entries of a matrix M, taking into account the block structure.
+  template<typename M>
+  struct MatrixDimension
   {
-    typedef DiagonalMatrix<K,n> Matrix;
-    typedef typename Matrix::size_type size_type;
-
-    static size_type rowdim(const Matrix& /*A*/, size_type /*r*/)
+  private:
+    using BlockDim = MatrixDimension<typename M::block_type>;
+    using size_type = typename M::size_type;
+  public:
+    //! Get the number of numeric entries in the rows of the matrix A
+    static size_type rowdim(const M& A)
     {
-      return 1;
+      size_type nnz = 0;
+      for (auto row=A.begin(); row!=A.end(); ++row)
+        nnz += MatrixDimension<M>::rowdim(A, row.index());
+      return nnz;
     }
 
-    static size_type coldim(const Matrix& /*A*/, size_type /*r*/)
+    //! Get the number of numeric entries in the columns of the matrix A
+    static size_type coldim(const M& A)
     {
-      return 1;
+      constexpr size_type ui_max = std::numeric_limits<size_type>::max();
+      // The following code has a complexity of nnz, and
+      // typically a very small constant.
+      std::vector<size_type> coldims(A.M(), ui_max);
+
+      for (auto row=A.begin(); row!=A.end(); ++row)
+        for (auto col=row->begin(); col!=row->end(); ++col) {
+          // only compute blocksizes we don't already have
+          if (coldims[col.index()] == ui_max)
+            coldims[col.index()] = BlockDim::coldim(*col);
+#ifdef DUNE_ISTL_WITH_CHECKING
+            else if (coldims[col.index()] != BlockDim::coldim(*col))
+            DUNE_THROW(ISTLError, "Inconsistent block sizes in column "<<col.index());
+#endif
+        }
+
+      auto skip_empty = [](size_type a, size_type b) { return b == ui_max ? a : a + b; };
+      return std::accumulate(coldims.begin(), coldims.end(), size_type(0), skip_empty);
     }
 
-    static size_type rowdim(const Matrix& /*A*/)
+    //! Get the number of numeric entries in the i-th row of the matrix A
+    static size_type rowdim(const M& A, size_type i)
     {
-      return n;
+      // find first valid column in i-th row
+      if(auto row = A.begin() + i; row->begin() != row->end())
+        return BlockDim::rowdim(*row->begin());
+      else
+        return 0;
     }
 
-    static size_type coldim(const Matrix& /*A*/)
+    //! Get the number of numeric entries in the c-th column of the matrix A
+    static size_type coldim(const M& A, size_type c)
     {
-      return n;
-    }
-  };
-
-  template<typename K, int n>
-  struct MatrixDimension<ScaledIdentityMatrix<K,n> >
-  {
-    typedef ScaledIdentityMatrix<K,n> Matrix;
-    typedef typename Matrix::size_type size_type;
-
-    static size_type rowdim(const Matrix& /*A*/, size_type /*r*/)
-    {
-      return 1;
-    }
-
-    static size_type coldim(const Matrix& /*A*/, size_type /*r*/)
-    {
-      return 1;
-    }
-
-    static size_type rowdim(const Matrix& /*A*/)
-    {
-      return n;
-    }
-
-    static size_type coldim(const Matrix& /*A*/)
-    {
-      return n;
+      // find first row with entry in column c
+      for (auto rowIt = A.begin(); rowIt != A.end(); ++rowIt) {
+        if (rowIt->size() == A.M()) {
+          auto colIt = rowIt->begin() + c;
+#ifdef DUNE_ISTL_WITH_CHECKING
+          if(colIt.index() != c)
+            DUNE_THROW(ISTLError, "Column iterator number " << c << " is the " << rowIt.index() << "-th rowIt->");
+#endif
+          return BlockDim::coldim(*colIt);
+        } else {
+          for (auto colIt = rowIt->begin(); colIt != rowIt->end(); ++colIt)
+            if (colIt.index() == c)
+              return BlockDim::coldim(*colIt);
+        }
+      }
+      // not found
+      return 0;
     }
   };
 
