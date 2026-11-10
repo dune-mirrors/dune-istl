@@ -296,20 +296,32 @@ namespace MatrixImp
         return *this;
       }
 
+      //! Advance iterator n times
+      Iterator& operator+(std::ptrdiff_t n)
+      {
+        i += n;
+        window_.setptr(window_.getptr()+n*window_.getsize());
+        return *this;
+      }
+
       //! prefix increment
       Iterator& operator++()
       {
-        ++i;
-        window_.setptr(window_.getptr()+window_.getsize());
+        return *this + 1;
+      }
+
+      //! Advance iterator -n times
+      Iterator& operator-(std::ptrdiff_t n)
+      {
+        i -= n;
+        window_.setptr(window_.getptr()-n*window_.getsize());
         return *this;
       }
 
       //! prefix decrement
       Iterator& operator--()
       {
-        --i;
-        window_.setptr(window_.getptr()-window_.getsize());
-        return *this;
+        return *this - 1;
       }
 
       //! equality
@@ -437,20 +449,32 @@ namespace MatrixImp
         return *this;
       }
 
+      //! Advance iterator n times
+      ConstIterator& operator+(std::ptrdiff_t n)
+      {
+        i += n;
+        window_.setptr(window_.getptr()+n*window_.getsize());
+        return *this;
+      }
+
       //! prefix increment
       ConstIterator& operator++()
       {
-        ++i;
-        window_.setptr(window_.getptr()+window_.getsize());
+        return *this + 1;
+      }
+
+      //! Advance iterator -n times
+      ConstIterator& operator-(std::ptrdiff_t n)
+      {
+        i -= n;
+        window_.setptr(window_.getptr()-n*window_.getsize());
         return *this;
       }
 
       //! prefix decrement
       ConstIterator& operator--()
       {
-        --i;
-        window_.setptr(window_.getptr()-window_.getsize());
-        return *this;
+        return *this - 1;
       }
 
       //! equality
