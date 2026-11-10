@@ -352,14 +352,14 @@ namespace Imp {
     //! iterator class for sequential access
     template<class T>
     class RealIterator
-      : public BidirectionalIteratorFacade<RealIterator<T>, T>
+      : public RandomAccessIteratorFacade<RealIterator<T>, T>
     {
     public:
       //! \brief The unqualified value type
       typedef typename std::remove_const<T>::type ValueType;
 
-      friend class BidirectionalIteratorFacade<RealIterator<const ValueType>, const ValueType>;
-      friend class BidirectionalIteratorFacade<RealIterator<ValueType>, ValueType>;
+      friend class RandomAccessIteratorFacade<RealIterator<const ValueType>, const ValueType>;
+      friend class RandomAccessIteratorFacade<RealIterator<ValueType>, ValueType>;
       friend class RealIterator<const ValueType>;
       friend class RealIterator<ValueType>;
 
@@ -427,7 +427,27 @@ namespace Imp {
         return i;
       }
 
+      //! return the distance to another iterator
+      std::ptrdiff_t distanceTo(const RealIterator<std::remove_const_t<ValueType>>& other) const
+      {
+        assert(p==other.p);
+        return (other.i-i);
+      }
+
+      //! return the distance to another constant iterator
+      std::ptrdiff_t distanceTo(const RealIterator<const std::remove_const_t<ValueType>>& other) const
+      {
+        assert(p==other.p);
+        return (other.i-i);
+      }
+
     private:
+      //! Advance iterator n times
+      auto advance(std::ptrdiff_t n)
+      {
+        i += n;
+      }
+
       //! prefix increment
       void increment()
       {
@@ -438,6 +458,12 @@ namespace Imp {
       void decrement()
       {
         --i;
+      }
+
+      //! return the element n positions from the current one.
+      reference elementAt(std::ptrdiff_t diff) const
+      {
+        return p[i+diff];
       }
 
       //! dereferencing
