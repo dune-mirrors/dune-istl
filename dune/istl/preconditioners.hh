@@ -27,6 +27,11 @@
 #include "ilu.hh"
 
 
+namespace Dune::Experimental {
+  template<class B, class I, class A>
+  class BCRSMatrix;
+}
+
 namespace Dune {
   /** @defgroup ISTL_Prec Preconditioners
    * @ingroup ISTL_Solvers
@@ -698,6 +703,25 @@ namespace Dune {
   public:
     //! \brief The matrix type the preconditioner is for.
     typedef typename std::remove_const<M>::type matrix_type;
+
+  protected:
+    template <class Mat>
+    struct ILUMatrixSelector
+    {
+      typedef Mat type;
+    };
+
+    // for Dune::Experimental::BCRSMatrix choose old BCRSMatrix to store ILU factorization
+    template<class B, class I, class A>
+    struct ILUMatrixSelector< Dune::Experimental::BCRSMatrix<B, I, A> >
+    {
+      typedef BCRSMatrix< B, A > type;
+    };
+
+    //! \brief The matrix storage type to store the preconditioner.
+    typedef typename ILUMatrixSelector< matrix_type > :: type ilu_matrix_type;
+
+  public:
     //! block type of matrix
     typedef typename matrix_type :: block_type block_type;
     //! \brief The domain type of the preconditioner.
@@ -785,23 +809,33 @@ namespace Dune {
       if( n == 0 )
       {
         // copy A
-        ILU_.reset( new matrix_type( A ) );
+        ILU0_.reset( new matrix_type( A ) );
         // create ILU(0) decomposition
-        ILU::blockILU0Decomposition( *ILU_ );
+        ILU::blockILU0Decomposition( *ILU0_ );
       }
       else
       {
         // create matrix in build mode
-        ILU_.reset( new matrix_type(  A.N(), A.M(), matrix_type::row_wise) );
+        ILU_.reset( new ilu_matrix_type(  A.N(), A.M(), ilu_matrix_type::row_wise) );
         // create ILU(n) decomposition
         ILU::blockILUDecomposition( A, n, *ILU_ );
       }
 
       if( resort )
       {
-        // store ILU in simple CRS format
-        ILU::convertToCRS( *ILU_, lower_, upper_, inv_ );
-        ILU_.reset();
+        if( ILU_ )
+        {
+          // store ILU in simple CRS format
+          ILU::convertToCRS( *ILU_, lower_, upper_, inv_ );
+          ILU_.reset();
+        }
+
+        if( ILU0_ )
+        {
+          // store ILU in simple CRS format
+          ILU::convertToCRS( *ILU0_, lower_, upper_, inv_ );
+          ILU0_.reset();
+        }
       }
     }
 
@@ -823,6 +857,10 @@ namespace Dune {
       if( ILU_ )
       {
         ILU::blockILUBacksolve( *ILU_, v, d);
+      }
+      else if ( ILU0_ )
+      {
+        ILU::blockILUBacksolve( *ILU0_, v, d);
       }
       else
       {
@@ -851,7 +889,8 @@ namespace Dune {
 
   protected:
     //! \brief The ILU(n) decomposition of the matrix. As storage a BCRSMatrix is used.
-    std::unique_ptr< matrix_type > ILU_;
+    std::unique_ptr< ilu_matrix_type > ILU_;
+    std::unique_ptr< matrix_type > ILU0_;
 
     //! \brief The ILU(n) decomposition of the matrix. As storage a CRS structure is used.
     CRS lower_;

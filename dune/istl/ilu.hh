@@ -176,14 +176,14 @@ namespace Dune {
         to either specify the number of nonzero elements or to
             determine it automatically at run-time.
      */
-    template<class M>
-    void blockILUDecomposition (const M& A, int n, M& ILU)
+    template<class M, class I>
+    void blockILUDecomposition (const M& A, int n, I& ILU)
     {
       // iterator types
       typedef typename M::ColIterator coliterator;
       typedef typename M::ConstRowIterator crowiterator;
       typedef typename M::ConstColIterator ccoliterator;
-      typedef typename M::CreateIterator createiterator;
+      typedef typename I::CreateIterator createiterator;
       typedef typename M::field_type K;
       typedef std::map<size_t, int> map;
       typedef typename map::iterator mapiterator;
@@ -204,8 +204,8 @@ namespace Dune {
         {
           if ((*ik).second<n)
           {
-            coliterator endk = ILU[(*ik).first].end();                       // end of row k
-            coliterator kj = ILU[(*ik).first].find((*ik).first);                       // diagonal in k
+            auto endk = ILU[(*ik).first].end();              // end of row k
+            auto kj   = ILU[(*ik).first].find((*ik).first);  // diagonal in k
             for (++kj; kj!=endk; ++kj)                       // row k eliminates in row i
             {
               // we misuse the storage to store an int. If the field_type is std::complex, we have to access the real/abs part
@@ -230,16 +230,16 @@ namespace Dune {
         ++ci;           // now row i exist
 
         // write generation index into entries
-        coliterator endILUij = ILU[i.index()].end();;
-        for (coliterator ILUij=ILU[i.index()].begin(); ILUij!=endILUij; ++ILUij)
+        auto endILUij = ILU[i.index()].end();;
+        for (auto ILUij=ILU[i.index()].begin(); ILUij!=endILUij; ++ILUij)
           Simd::lane(0, firstMatrixElement(*ILUij)) = (Simd::Scalar<K>) rowpattern[ILUij.index()];
       }
 
       // copy entries of A
       for (crowiterator i=A.begin(); i!=endi; ++i)
       {
-        coliterator ILUij;
-        coliterator endILUij = ILU[i.index()].end();;
+        auto endILUij = ILU[i.index()].end();;
+        decltype( endILUij ) ILUij;
         for (ILUij=ILU[i.index()].begin(); ILUij!=endILUij; ++ILUij)
           (*ILUij) = 0;           // clear row
         ccoliterator Aij = (*i).begin();
