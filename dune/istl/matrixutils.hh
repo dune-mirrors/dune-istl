@@ -291,7 +291,8 @@ namespace Experimental {
   struct MatrixDimension
   {
   private:
-    using BlockDim = MatrixDimension<typename M::block_type>;
+    using block_type = typename M::block_type;
+    using block_dim = MatrixDimension<block_type>;
     using size_type = typename M::size_type;
   public:
     //! Get the number of numeric entries in the rows of the matrix A
@@ -315,15 +316,23 @@ namespace Experimental {
         for (auto col=row->begin(); col!=row->end(); ++col) {
           // only compute blocksizes we don't already have
           if (coldims[col.index()] == ui_max)
-            coldims[col.index()] = BlockDim::coldim(*col);
+            coldims[col.index()] = block_dim::coldim(*col);
 #ifdef DUNE_ISTL_WITH_CHECKING
-            else if (coldims[col.index()] != BlockDim::coldim(*col))
+          else if (coldims[col.index()] != block_dim::coldim(*col))
             DUNE_THROW(ISTLError, "Inconsistent block sizes in column "<<col.index());
 #endif
         }
 
-      auto skip_empty = [](size_type a, size_type b) { return b == ui_max ? a : a + b; };
-      return std::accumulate(coldims.begin(), coldims.end(), size_type(0), skip_empty);
+      auto handle_empty = [](size_type a, size_type b) {
+        if (b == ui_max) {
+          if (std::default_initializable<block_type>)
+            return a + block_dim::coldim(block_type{});
+          else
+            DUNE_THROW(RangeError, "Matrix column is empty. It is not possible to determine its dimension dynamically.");
+        }
+        return a + b;
+      };
+      return std::accumulate(coldims.begin(), coldims.end(), size_type(0), handle_empty);
     }
 
     //! Get the number of numeric entries in the i-th row of the matrix A
@@ -331,9 +340,11 @@ namespace Experimental {
     {
       // find first valid column in i-th row
       if(auto row = A.begin() + i; row->begin() != row->end())
-        return BlockDim::rowdim(*row->begin());
+        return block_dim::rowdim(*row->begin());
+      else if (std::default_initializable<block_type>)
+        return block_dim::rowdim(block_type{});
       else
-        return 0;
+        DUNE_THROW(RangeError, "Matrix row is empty. It is not possible to determine its dimension dynamically.");
     }
 
     //! Get the number of numeric entries in the c-th column of the matrix A
@@ -347,11 +358,11 @@ namespace Experimental {
           if(colIt.index() != c)
             DUNE_THROW(ISTLError, "Column iterator number " << c << " is the " << rowIt.index() << "-th rowIt->");
 #endif
-          return BlockDim::coldim(*colIt);
+          return block_dim::coldim(*colIt);
         } else {
           for (auto colIt = rowIt->begin(); colIt != rowIt->end(); ++colIt)
             if (colIt.index() == c)
-              return BlockDim::coldim(*colIt);
+              return block_dim::coldim(*colIt);
         }
       }
       // not found
