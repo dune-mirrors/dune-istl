@@ -1,6 +1,0 @@
-# SPDX-FileCopyrightText: Copyright © DUNE Project contributors, see file LICENSE.md in module root
-# SPDX-License-Identifier: LicenseRef-GPL-2.0-only-with-DUNE-exception
-
-[build-system]
-requires = ['dune-common@git+https://gitlab.dune-project.org/core/dune-common.git', 'numpy', 'pip', 'setuptools', 'wheel', 'scikit-build', 'cmake', 'ninja', 'requests']
-build-backend = 'setuptools.build_meta'
