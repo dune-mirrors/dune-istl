@@ -188,13 +188,22 @@ namespace Dune {
       typedef std::map<size_t, int> map;
       typedef typename map::iterator mapiterator;
 
+      // ad-hoc crs pattern
+      std::vector<std::uint_least32_t> offsets(A.N()+1, 0);
+      std::vector<std::uint_least32_t> cols;
+      std::vector<int> generations;
+      auto getRowIndices = [&offsets,&cols](size_t i) {
+        return std::span(cols.data() + offsets[i], offsets[i+1] - offsets[i]);
+      };
+      cols.reserve(A.nonzeroes());
+      generations.reserve(A.nonzeroes());
+
       // symbolic factorization phase, store generation number in first matrix element
-      crowiterator endi=A.end();
-      createiterator ci=ILU.createbegin();
+      auto endi=A.end();
+      map rowpattern; // maps column index to generation
       for (crowiterator i=A.begin(); i!=endi; ++i)
       {
-        map rowpattern; // maps column index to generation
-
+        rowpattern.clear();
         // initialize pattern with row of A
         for (ccoliterator j=(*i).begin(); j!=(*i).end(); ++j)
           rowpattern[j.index()] = 0;
@@ -204,36 +213,37 @@ namespace Dune {
         {
           if ((*ik).second<n)
           {
-            coliterator endk = ILU[(*ik).first].end();                       // end of row k
-            coliterator kj = ILU[(*ik).first].find((*ik).first);                       // diagonal in k
-            for (++kj; kj!=endk; ++kj)                       // row k eliminates in row i
+            auto rowk = getRowIndices((*ik).first);
+            auto kj = std::lower_bound(rowk.begin(), rowk.end(), (*ik).first); // diagonal in k
+            for (++kj; kj!=rowk.end(); ++kj)
             {
-              // we misuse the storage to store an int. If the field_type is std::complex, we have to access the real/abs part
-              // starting from C++11, we can use std::abs to always return a real value, even if it is double/float
-              using std::abs;
-              int generation = (int) Simd::lane(0, abs( firstMatrixElement(*kj) ));
+              int generation = generations[ offsets[(*ik).first] + std::distance(rowk.begin(), kj) ];
               if (generation<n)
               {
-                mapiterator ij = rowpattern.find(kj.index());
+                mapiterator ij = rowpattern.find(*kj);
                 if (ij==rowpattern.end())
                 {
-                  rowpattern[kj.index()] = generation+1;
+                  rowpattern[*kj] = generation+1;
                 }
               }
             }
           }
         }
 
-        // create row
-        for (mapiterator ik=rowpattern.begin(); ik!=rowpattern.end(); ++ik)
-          ci.insert((*ik).first);
-        ++ci;           // now row i exist
-
-        // write generation index into entries
-        coliterator endILUij = ILU[i.index()].end();;
-        for (coliterator ILUij=ILU[i.index()].begin(); ILUij!=endILUij; ++ILUij)
-          Simd::lane(0, firstMatrixElement(*ILUij)) = (Simd::Scalar<K>) rowpattern[ILUij.index()];
+        // create row in ad-hoc crs pattern
+        offsets[i.index()+1] = offsets[i.index()] + rowpattern.size();
+        for (auto [j, gen] : rowpattern) {
+          cols.push_back(j);
+          generations.push_back(gen);
+        }
       }
+      generations.clear();
+
+      for (auto ci = ILU.createbegin(); ci!=ILU.createend(); ++ci)
+        for (auto col : getRowIndices(ci.index()))
+          ci.insert(col);
+      cols.clear();
+      offsets.clear();
 
       // copy entries of A
       for (crowiterator i=A.begin(); i!=endi; ++i)

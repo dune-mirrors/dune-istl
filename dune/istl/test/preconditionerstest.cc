@@ -10,6 +10,7 @@
 #include <dune/common/fmatrix.hh>
 
 #include <dune/istl/bcrsmatrix.hh>
+#include <dune/istl/experimental/bcrsmatrix.hh>
 #include <dune/istl/operators.hh>
 #include <dune/istl/preconditioners.hh>
 #include <dune/istl/solvers.hh>
@@ -124,6 +125,26 @@ int main() try
 
   {
     using Matrix = BCRSMatrix<FieldMatrix<double,1,1> >;
+    using Vector = BlockVector<FieldVector<double,1> >;
+    Matrix matrix;
+    Vector b,x;
+    setupProblem(matrix, b);
+
+    testAllPreconditioners(matrix, b);
+  }
+
+  {
+    using Matrix = Experimental::BCRSMatrix<double>;
+    using Vector = BlockVector<double>;
+    Matrix matrix;
+    Vector b,x;
+    setupProblem(matrix, b);
+
+    testAllPreconditioners(matrix, b);
+  }
+
+  {
+    using Matrix = Experimental::BCRSMatrix<FieldMatrix<double,1,1> >;
     using Vector = BlockVector<FieldVector<double,1> >;
     Matrix matrix;
     Vector b,x;
